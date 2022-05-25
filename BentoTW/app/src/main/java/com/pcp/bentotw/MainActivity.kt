@@ -30,6 +30,7 @@ import kotlinx.coroutines.delay
     Use skill:
     1. Navigation.
     2. LaunchedEffect (Coroutine).
+    3. Firebase analytics (Tools -> Firebase)
  */
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
