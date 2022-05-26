@@ -1,28 +1,43 @@
 package com.pcp.bentotw
 
+import android.content.Context
 import android.os.Bundle
+import android.util.Log
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.viewModels
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.Button
+import androidx.compose.material.ButtonDefaults
+import androidx.compose.material.OutlinedTextField
 import androidx.compose.material.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.*
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.pcp.bentotw.ui.theme.BentoTWTheme
-import com.pcp.bentotw.ui.theme.Green0091A7
-import com.pcp.bentotw.ui.theme.Green00E6FE
+import com.google.firebase.analytics.FirebaseAnalytics
+import com.google.firebase.analytics.ktx.analytics
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.ktx.auth
+import com.google.firebase.ktx.Firebase
+import com.pcp.bentotw.ui.theme.*
 import kotlinx.coroutines.delay
 
 /*
@@ -31,11 +46,21 @@ import kotlinx.coroutines.delay
     1. Navigation.
     2. LaunchedEffect (Coroutine).
     3. Firebase analytics (Tools -> Firebase)
+    4. Firebase auth
+    5. ViewModel
+    6. MutableLiveData, LiveData
+    7. observeAsState
  */
 class MainActivity : ComponentActivity() {
+    private lateinit var analytics: FirebaseAnalytics
+    private lateinit var auth: FirebaseAuth
+    private val mainViewModel by viewModels<MainViewModel>()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
+            analytics = Firebase.analytics
+            auth = Firebase.auth
             BentoTWTheme {
                 val navController = rememberNavController() //Navigation Step2
 
@@ -45,13 +70,16 @@ class MainActivity : ComponentActivity() {
                 ) {
                     composable("initial_screen") {
                         //second screen
-                        InitialScreen01(navController = navController)
+                        InitialScreen01(navController = navController, auth)
                     }
                     composable("login_screen") {
                         //first screen
-                        LoginScreen02(navController = navController)
+                        LoginScreen02(navController = navController, auth, applicationContext, mainViewModel)
                     }
-
+                    composable("new_user_screen") {
+                        //first screen
+                        NewUserScreen03(navController = navController, auth, applicationContext, mainViewModel)
+                    }
                 }
             }
         }
@@ -59,10 +87,10 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun InitialScreen01(navController: NavController) {
+fun InitialScreen01(navController: NavController, auth: FirebaseAuth) {
     Column(modifier = Modifier
         .fillMaxSize()
-        .background(color = Green00E6FE),
+        .background(color = Green4DCEE3),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -80,16 +108,131 @@ fun InitialScreen01(navController: NavController) {
 }
 
 @Composable
-fun LoginScreen02(navController: NavController) {
+fun LoginScreen02(navController: NavController, auth: FirebaseAuth, context: Context, mainViewModel: MainViewModel) {
+    var emailText by remember { mutableStateOf("") }
+    var passwordText by remember { mutableStateOf("") }
+
+    val interactionSourceTest = remember { MutableInteractionSource() }
+    val pressState = interactionSourceTest.collectIsPressedAsState()
+    val borderColor = if (pressState.value) Blue31B6FB else Blue00E6FE //Import com.pcp.composecomponent.ui.theme.YellowFFEB3B
+
+    val loginUser by mainViewModel._loginUser.observeAsState(null)  // observeAsState need to implement: androidx.compose.runtime:runtime-livedata:
+
+    var loginUserMail = ""
+    var nickName = ""
+
+    mainViewModel.authStateListener(auth)
+    mainViewModel.updateUserStatus(auth)
+    loginUser?.let { user ->
+        user.email?.let { mail ->
+            loginUserMail = mail
+        }
+        user.displayName?.let { name ->
+            nickName = name
+        }
+    }
+    if(loginUser == null)
+        Log.v("Test", "LoginUser 00 = null")
+    else
+        Log.v("Test", "LoginUser 01 = ${loginUser!!.toString()},  ${loginUser!!.email}")
+    //TODO("Need to modify UI more beautiful")
+    Column(verticalArrangement = Arrangement.SpaceEvenly,
+        horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(text = "Second screen: Login mail screen",
+            modifier = Modifier.clickable(onClick = {
+                navController.navigate("login_screen")
+            })
+        )
+        TextFieldShow(MainViewModel.TEXT_EMAIL, emailText) { info -> emailText = info }
+        TextFieldShow(MainViewModel.TEXT_PASSWORD, passwordText) { info -> passwordText = info }
+        Button( //Button只是一個容器,裡面要放文字,就是要再加一個Text
+            modifier = Modifier.fillMaxHeight(0.5f),
+            //enabled = false,
+            enabled = true, //如果 enabled 設為false, border, interactionSource就不會有變化
+            interactionSource = interactionSourceTest,
+            elevation = ButtonDefaults.elevation(
+                defaultElevation = 6.dp,
+                pressedElevation = 8.dp,
+                disabledElevation = 2.dp
+            ),
+            shape = RoundedCornerShape(8.dp),
+            border = BorderStroke(5.dp, color = borderColor),
+            colors = ButtonDefaults.buttonColors(
+                backgroundColor = Color.White,
+                contentColor = Color.Red),
+            contentPadding = PaddingValues(4.dp, 3.dp, 2.dp, 1.dp),
+            onClick = { if(loginUserMail == "") {
+                if(emailText.isEmpty()) {
+                    Toast.makeText(context, "Please enter account", Toast.LENGTH_LONG).show()
+                    return@Button
+                }
+                if(passwordText.isEmpty()) {
+                    Toast.makeText(context, "Please enter password", Toast.LENGTH_LONG).show()
+                    return@Button
+                }
+                auth.signInWithEmailAndPassword(emailText,passwordText)
+                    .addOnFailureListener { exception ->
+                        Toast.makeText(context, "Login error: ${exception.localizedMessage}", Toast.LENGTH_LONG).show()
+                    }
+            } else {
+                auth.signOut()
+            } })
+        {
+            Text(text = if(loginUserMail == "") "Login" else "Logout")
+        }
+
+        Button( //Button只是一個容器,裡面要放文字,就是要再加一個Text
+            modifier = Modifier.fillMaxHeight(0.5f),
+            //enabled = false,
+            enabled = true, //如果 enabled 設為false, border, interactionSource就不會有變化
+            interactionSource = interactionSourceTest,
+            elevation = ButtonDefaults.elevation(
+                defaultElevation = 6.dp,
+                pressedElevation = 8.dp,
+                disabledElevation = 2.dp
+            ),
+            shape = RoundedCornerShape(8.dp),
+            border = BorderStroke(5.dp, color = borderColor),
+            colors = ButtonDefaults.buttonColors(
+                backgroundColor = Color.White,
+                contentColor = Color.Red),
+            contentPadding = PaddingValues(4.dp, 3.dp, 2.dp, 1.dp),
+            onClick = { navController.navigate("new_user_screen") }) {
+            Text(text = "Create new account") }
+
+        Text(text = if(loginUserMail == "") "Status: not login" else "Status: $loginUserMail login, nick name = $nickName")
+    }
+}
+
+@Composable
+fun NewUserScreen03(navController: NavController, auth: FirebaseAuth, context: Context, mainViewModel: MainViewModel) {
     Column(modifier = Modifier
         .fillMaxSize()
-        .background(color = Green00E6FE),
+        .background(color = Green4DCEE3),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(text = stringResource(R.string.app_title),
             color = Green0091A7)
+
     }
+}
+
+@Composable
+fun TextFieldShow(from: Int, value: String, valueAlter: (info: String) -> Unit) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = { valueAlter(it) },
+        placeholder = {
+            when (from) {
+                MainViewModel.TEXT_EMAIL -> Text("E-mail:")
+                MainViewModel.TEXT_PASSWORD -> Text("Password:")
+                MainViewModel.TEXT_NICKNAME -> Text("Nick name:")
+                MainViewModel.TEXT_PASSWORD_CONFIRM -> Text("confirm password")
+                MainViewModel.TEXT_NEW_ACCOUNT_EMAIL -> Text("new account(Email)")
+            }
+        },
+    )
 }
 
 @Preview(showBackground = true)
