@@ -1,4 +1,12 @@
 <resources>
     <string name="app_name">BentoTW</string>
     <string name="app_title">PCP Taiwan Bento order system</string>
+    <string name="login_title">Please login to system</string>
+    <string name="email">E-mail</string>
+    <string name="password">Password</string>
+    <string name="nick_name">Nick name</string>
+    <string name="confirm_password">Confirm password</string>
+    <string name="new_account_email">New account(E-mail)</string>
+
+    <string name="shop">Today\'s shop</string>
 </resources>

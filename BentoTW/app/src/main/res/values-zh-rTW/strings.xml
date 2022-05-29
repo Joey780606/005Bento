@@ -1,0 +1,12 @@
+<resources>
+    <string name="app_name">BentoTW</string>
+    <string name="app_title">PCP台北辦公室便當訂購系統</string>
+    <string name="login_title">請登入系統</string>
+    <string name="email">E-mail</string>
+    <string name="password">密碼</string>
+    <string name="nick_name">暱稱</string>
+    <string name="confirm_password">密碼確認</string>
+    <string name="new_account_email">新帳號(E-mail)</string>
+
+    <string name="shop">今天的餐廳</string>
+</resources>
