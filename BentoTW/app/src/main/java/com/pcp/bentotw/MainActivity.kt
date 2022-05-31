@@ -37,6 +37,10 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.UserProfileChangeRequest
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.ktx.Firebase
+import com.pcp.bentotw.MainActivity.Companion.DIALOG_CLOSE
+import com.pcp.bentotw.MainActivity.Companion.DIALOG_CLOSE_BACK_PRIOR
+import com.pcp.bentotw.MainActivity.Companion.DIALOG_OPEN
+import com.pcp.bentotw.MainActivity.Companion.DIALOG_TYPE_OK
 import com.pcp.bentotw.ui.theme.*
 import kotlinx.coroutines.delay
 
@@ -88,6 +92,14 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+
+    companion object {
+        val DIALOG_CLOSE = 0
+        val DIALOG_OPEN = 1
+        val DIALOG_CLOSE_BACK_PRIOR = 2
+
+        val DIALOG_TYPE_OK = 0
+    }
 }
 
 @Composable
@@ -113,6 +125,7 @@ fun InitialScreen01(navController: NavController, auth: FirebaseAuth) {
 
 @Composable
 fun LoginScreen02(navController: NavController, auth: FirebaseAuth, context: Context, mainViewModel: MainViewModel) {
+    val openDialog = remember { mutableStateOf(DIALOG_CLOSE) } // = 與 by 的差異是, by是委托概念,就不需要加 .value 值了.
     var emailText by remember { mutableStateOf("") }
     var passwordText by remember { mutableStateOf("") }
 
@@ -180,6 +193,20 @@ fun LoginScreen02(navController: NavController, auth: FirebaseAuth, context: Con
                 auth.signInWithEmailAndPassword(emailText,passwordText)
                     .addOnFailureListener { exception ->
                         Toast.makeText(context, "Login error: ${exception.localizedMessage}", Toast.LENGTH_LONG).show()
+                    }.addOnSuccessListener { result ->
+                        result.user?.let { userInfo ->
+                            if (!userInfo.isEmailVerified) {
+                                userInfo.sendEmailVerification().addOnSuccessListener {
+                                    openDialog.value = DIALOG_OPEN
+                                    Log.v("TEST", "verify 02: Send verification")
+                                }.addOnFailureListener { error ->
+                                    Toast.makeText(context, "Account create success but fail verification! error: ${error.message}", Toast.LENGTH_LONG).show()
+                                }
+                                auth.signOut()
+                            } else {
+                                Toast.makeText(context, "Already sign and verify, go to next", Toast.LENGTH_LONG).show()
+                            }
+                        }
                     }
             } else {
                 auth.signOut()
@@ -210,6 +237,12 @@ fun LoginScreen02(navController: NavController, auth: FirebaseAuth, context: Con
         Text(text = if(loginUserMail == "") "Status: not login" else "Status: $loginUserMail login, nick name = $nickName")
         Text(text = "order", modifier = Modifier.clickable { navController.navigate("choice_food_screen") })
     }
+
+    when (openDialog.value) {
+        DIALOG_OPEN -> {
+            DialogShow(stringResource(R.string.success), stringResource(R.string.send_confirm_mail), DIALOG_TYPE_OK) { status -> openDialog.value = status }
+        }
+    }
 }
 
 @Composable
@@ -233,6 +266,7 @@ fun NewUserScreen03(navController: NavController, auth: FirebaseAuth, context: C
     val pressState = interactionSourceTest.collectIsPressedAsState()
     val borderColor = if (pressState.value) Blue31B6FB else Blue00E6FE //Import com.pcp.composecomponent.ui.theme.Blue31B6FB
 
+    Log.v("Test", "NewUserScreen03 in")
     //TODO("Need to modify UI more beautiful")
     Column(modifier = Modifier
         .fillMaxSize()
@@ -277,17 +311,15 @@ fun NewUserScreen03(navController: NavController, auth: FirebaseAuth, context: C
                     Toast.makeText(context, "Password not match", Toast.LENGTH_LONG).show()
                     return@Button
                 }
-                auth.createUserWithEmailAndPassword(emailText, passwordText).addOnCompleteListener() { task ->
+                auth.createUserWithEmailAndPassword(emailText, passwordText).addOnCompleteListener { task ->
                     if (task.isSuccessful) {
                         Toast.makeText(context, "Account Created!", Toast.LENGTH_LONG).show()
                         var user = auth.currentUser
                         var request = UserProfileChangeRequest.Builder().setDisplayName(nickNameText).build()
+
                         user?.let { userInfo ->
                             userInfo.updateProfile(request)
-                            //要做這是因為上面的寫入,會有時間差,所以回到前頁時,DisplayName還不會被寫入,作者建議就重新再登入一次看看
-                            //但目前試還是有問題,要再改
-                            auth.signOut()
-                            auth.signInWithEmailAndPassword(emailText, passwordText)
+                            auth.signOut()  // 預設一旦建立帳號,即使用者,但因要考量認證流程,所以先不要直接用,讓他先登出
                         }
                         navController.navigate("login_screen")
                     }
@@ -299,6 +331,60 @@ fun NewUserScreen03(navController: NavController, auth: FirebaseAuth, context: C
             Text(text = "Create account", color = Green0091A7)
         }
     }
+}
+
+@Composable
+fun DialogShow(title: String, content: String, dialogType: Int, valueAlter: (info: Int) -> Unit) {
+    AlertDialog(
+        onDismissRequest = {
+            valueAlter(DIALOG_CLOSE)
+        },
+        title = {
+            Text(modifier = Modifier.fillMaxWidth(),
+                text = title)
+        },
+        text = {
+            Text(modifier = Modifier.fillMaxWidth(),
+                text = content)
+        },
+        buttons = {
+            if(dialogType == DIALOG_TYPE_OK) {
+                Button(
+                    modifier = Modifier
+                        .padding(2.dp),
+                    onClick = {
+                        valueAlter(DIALOG_CLOSE)
+                    })
+                {
+                    Text(stringResource(R.string.ok))
+                }
+            } else {
+                Row() {
+                    Button(
+                        modifier = Modifier
+                            .weight(0.5f)
+                            .padding(2.dp),
+                        onClick = {
+                            valueAlter(DIALOG_CLOSE)
+                        })
+                    {
+                        Text(stringResource(R.string.app_title))
+                    }
+
+                    Button(
+                        modifier = Modifier
+                            .weight(0.5f)
+                            .padding(2.dp),
+                        onClick = {
+                            valueAlter(DIALOG_CLOSE)
+                        })
+                    {
+                        Text("Cancel")
+                    }
+                }
+            }
+        }
+    )
 }
 
 @Composable

@@ -10,5 +10,10 @@
 
     <string name="create_new_account">建立新帳戶</string>
 
+    <string name="send_confirm_mail">系統將發送驗證郵件,請您至信箱收信,並驗證郵件</string>
+
+    <string name="success">成功</string>
+    <string name="ok">OK</string>
+
     <string name="shop">今天的餐廳</string>
 </resources>

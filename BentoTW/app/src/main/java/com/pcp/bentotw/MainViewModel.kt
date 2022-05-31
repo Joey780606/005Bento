@@ -13,6 +13,7 @@ class MainViewModel: ViewModel() {
 
     fun updateUserStatus(auth: FirebaseAuth) {
         _loginUser.value = auth.currentUser
+        Log.v("Test", "updateUserStatus ${auth.currentUser?.email}" )
     }
 
     fun authStateListener(auth: FirebaseAuth) {

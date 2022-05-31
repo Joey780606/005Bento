@@ -10,5 +10,10 @@
 
     <string name="create_new_account">Create new account</string>
 
+    <string name="send_confirm_mail">The system will send a verification email, please go to your mailbox to receive the email and verify the email</string>
+
+    <string name="success">成功</string>
+    <string name="ok">OK</string>
+
     <string name="shop">Today\'s shop</string>
 </resources>
