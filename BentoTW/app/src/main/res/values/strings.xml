@@ -8,5 +8,7 @@
     <string name="confirm_password">Confirm password</string>
     <string name="new_account_email">New account(E-mail)</string>
 
+    <string name="create_new_account">Create new account</string>
+
     <string name="shop">Today\'s shop</string>
 </resources>

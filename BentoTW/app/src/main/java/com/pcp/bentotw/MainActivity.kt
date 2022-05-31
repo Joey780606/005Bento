@@ -234,19 +234,22 @@ fun NewUserScreen03(navController: NavController, auth: FirebaseAuth, context: C
     val borderColor = if (pressState.value) Blue31B6FB else Blue00E6FE //Import com.pcp.composecomponent.ui.theme.Blue31B6FB
 
     //TODO("Need to modify UI more beautiful")
-    Column(verticalArrangement = Arrangement.SpaceEvenly,
+    Column(modifier = Modifier
+        .fillMaxSize()
+        .background(color = Green4DCEE3),
+        verticalArrangement = Arrangement.SpaceEvenly,
         horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(text = "Login new user screen",
+        Text(text = stringResource(R.string.create_new_account),
             modifier = Modifier.clickable(onClick = {
                 navController.navigate("login_screen")
             })
         )
         TextFieldShow(MainViewModel.TEXT_NEW_ACCOUNT_EMAIL , emailText, 0.8f) { info -> emailText = info }
-        TextFieldShow(MainViewModel.TEXT_NICKNAME, nickNameText, 0.7f) { info -> nickNameText = info }
-        TextFieldShow(MainViewModel.TEXT_PASSWORD, passwordText, 0.6f) { info -> passwordText = info }
-        TextFieldShow(MainViewModel.TEXT_PASSWORD_CONFIRM, passwordConfirmText, 0.5f) { info -> passwordConfirmText = info }
+        TextFieldShow(MainViewModel.TEXT_NICKNAME, nickNameText, 0.8f) { info -> nickNameText = info }
+        TextFieldShow(MainViewModel.TEXT_PASSWORD, passwordText, 0.8f) { info -> passwordText = info }
+        TextFieldShow(MainViewModel.TEXT_PASSWORD_CONFIRM, passwordConfirmText, 0.8f) { info -> passwordConfirmText = info }
         Button( //Button只是一個容器,裡面要放文字,就是要再加一個Text
-            modifier = Modifier.fillMaxHeight(0.5f),
+            //modifier = Modifier.fillMaxHeight(0.5f),
             //enabled = false,
             enabled = true, //如果 enabled 設為false, border, interactionSource就不會有變化
             interactionSource = interactionSourceTest,
@@ -354,11 +357,11 @@ fun TextFieldShow(from: Int, value: String, fieldratio: Float, valueAlter: (info
         onValueChange = { valueAlter(it) },
         placeholder = {
             when (from) {
-                MainViewModel.TEXT_EMAIL -> Text("E-mail:", color = Green0091A7)
-                MainViewModel.TEXT_PASSWORD -> Text("Password:", color = Green0091A7)
-                MainViewModel.TEXT_NICKNAME -> Text("Nick name:", color = Green0091A7)
-                MainViewModel.TEXT_PASSWORD_CONFIRM -> Text("confirm password", color = Green0091A7)
-                MainViewModel.TEXT_NEW_ACCOUNT_EMAIL -> Text("new account(Email)", color = Green0091A7)
+                MainViewModel.TEXT_EMAIL -> Text(text = stringResource(R.string.email), color = Green0091A7)
+                MainViewModel.TEXT_PASSWORD -> Text(text = stringResource(R.string.password), color = Green0091A7)
+                MainViewModel.TEXT_NICKNAME -> Text(text = stringResource(R.string.nick_name), color = Green0091A7)
+                MainViewModel.TEXT_PASSWORD_CONFIRM -> Text(text = stringResource(R.string.confirm_password), color = Green0091A7)
+                MainViewModel.TEXT_NEW_ACCOUNT_EMAIL -> Text(text = stringResource(R.string.new_account_email), color = Green0091A7)
             }
         },
         shape = RoundedCornerShape(8.dp),

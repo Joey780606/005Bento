@@ -8,5 +8,7 @@
     <string name="confirm_password">密碼確認</string>
     <string name="new_account_email">新帳號(E-mail)</string>
 
+    <string name="create_new_account">建立新帳戶</string>
+
     <string name="shop">今天的餐廳</string>
 </resources>
