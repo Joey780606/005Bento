@@ -17,8 +17,14 @@
     <string name="send_reset_pwd_email_ok">Already send e-mail for reset password, please check.</string>
     <string name="send_reset_pwd_email_fail">"Fail to send reset password e-mail, reason:"</string>
 
-    <string name="success">成功</string>
+    <string name="success">Success</string>
     <string name="ok">OK</string>
+
+    <string name="function_order">Order bento</string>
+    <string name="function_modify_order">Modify order</string>
+    <string name="function_shop_process">Shop process</string>
+    <string name="function_schedule_shop">Shop schedule</string>
+    <string name="function_logout">Logout</string>
 
     <string name="shop">Today\'s shop</string>
 </resources>

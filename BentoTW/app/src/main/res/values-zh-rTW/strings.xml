@@ -20,5 +20,11 @@
     <string name="success">成功</string>
     <string name="ok">OK</string>
 
+    <string name="function_order">訂便當</string>
+    <string name="function_modify_order">修改訂單</string>
+    <string name="function_shop_process">商家資料處理</string>
+    <string name="function_schedule_shop">每日便當商家排程</string>
+    <string name="function_logout">登出</string>
+
     <string name="shop">今天的餐廳</string>
 </resources>

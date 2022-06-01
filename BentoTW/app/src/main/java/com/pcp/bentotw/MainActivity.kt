@@ -28,6 +28,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -89,6 +90,10 @@ class MainActivity : ComponentActivity() {
                         //first screen
                         ChoiceFood04(navController = navController, auth, applicationContext, mainViewModel)
                     }
+                    composable("function_list") {
+                        //first screen
+                        FunctionList05(navController = navController, auth, applicationContext, mainViewModel)
+                    }
                 }
             }
         }
@@ -120,7 +125,10 @@ fun InitialScreen01(navController: NavController, auth: FirebaseAuth) {
     }
     LaunchedEffect(true) {
         delay(2000)
-        navController.navigate("login_screen")
+        auth.currentUser?.let {
+            navController.navigate("function_list")
+        } ?: navController.navigate("login_screen")
+
     }
 }
 
@@ -169,8 +177,9 @@ fun LoginScreen02(navController: NavController, auth: FirebaseAuth, context: Con
         Row(modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.Center) {
             Button( //Button只是一個容器,裡面要放文字,就是要再加一個Text
-                modifier = Modifier.fillMaxWidth(0.5f)
-                    .alpha(if(emailText.isEmpty()) 0f else 100f),   //讓元件消失的方法
+                modifier = Modifier
+                    .fillMaxWidth(0.5f)
+                    .alpha(if (emailText.isEmpty()) 0f else 100f),   //讓元件消失的方法
                 //enabled = false,
                 enabled = true, //如果 enabled 設為false, border, interactionSource就不會有變化
                 interactionSource = interactionSourceTest,
@@ -492,10 +501,94 @@ fun ChoiceFood04(navController: NavController, auth: FirebaseAuth, context: Cont
 }
 
 @Composable
+fun FunctionList05(navController: NavController, auth: FirebaseAuth, context: Context, mainViewModel: MainViewModel) {
+    val interactionSourceTest = remember { MutableInteractionSource() }
+    val pressState = interactionSourceTest.collectIsPressedAsState()
+    val borderColor = if (pressState.value) Blue31B6FB else Blue00E6FE //Import com.pcp.composecomponent.ui.theme.Blue31B6FB
+
+    val foodList = listOf("Order", "Modify order", "Shop manager", "Schedule shop", "Logout")
+
+    Log.v("Test", "FunctionList05 in")
+
+    Column(modifier = Modifier
+        .fillMaxSize()
+        .background(color = Green4DCEE3),
+        verticalArrangement = Arrangement.SpaceEvenly,
+        horizontalAlignment = Alignment.CenterHorizontally) {
+
+        for(item in foodList) {
+            Button( //Button只是一個容器,裡面要放文字,就是要再加一個Text
+                modifier = Modifier.fillMaxWidth(0.8f),
+                //enabled = false,
+                enabled = true, //如果 enabled 設為false, border, interactionSource就不會有變化
+                interactionSource = interactionSourceTest,
+                elevation = ButtonDefaults.elevation(
+                    defaultElevation = 6.dp,
+                    pressedElevation = 8.dp,
+                    disabledElevation = 2.dp
+                ),
+                shape = RoundedCornerShape(8.dp),
+                border = BorderStroke(5.dp, color = borderColor),
+                colors = ButtonDefaults.buttonColors(
+                    backgroundColor = Green0091A7,
+                    contentColor = Color.Red
+                ),
+                contentPadding = PaddingValues(4.dp, 3.dp, 2.dp, 1.dp),
+                onClick = {
+                    when (item) {
+                        "Order" -> Log.v("TEST", "123")
+                        "Logout" -> {
+                            auth?.let { authority ->
+                                authority.signOut()
+                                navController.navigate("login_screen")
+                            }
+                        }
+                    }
+                })
+            {
+                when (item) {
+                    "Order" -> {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Image(painterResource(id = R.drawable.ic_baseline_fastfood_24), contentDescription = "")
+                            Text(text = stringResource(R.string.function_order), color = Green4DCEE3, fontSize = 30.sp)
+                        }
+                    }
+                    "Modify order" -> {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Image(painterResource(id = R.drawable.ic_baseline_border_color_24), contentDescription = "")
+                            Text(text = stringResource(R.string.function_modify_order), color = Green4DCEE3, fontSize = 30.sp)
+                        }
+                    }
+                    "Shop manager" -> {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Image(painterResource(id = R.drawable.ic_baseline_shopping_basket_24), contentDescription = "")
+                            Text(text = stringResource(R.string.function_shop_process), color = Green4DCEE3, fontSize = 30.sp)
+                        }
+                    }
+                    "Schedule shop" -> {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Image(painterResource(id = R.drawable.ic_baseline_schedule_24), contentDescription = "")
+                            Text(text = stringResource(R.string.function_schedule_shop), color = Green4DCEE3, fontSize = 30.sp)
+                        }
+                    }
+                    "Logout" -> {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Image(painterResource(id = R.drawable.ic_baseline_arrow_outward_24), contentDescription = "")
+                            Text(text = stringResource(R.string.function_logout), color = Green4DCEE3, fontSize = 30.sp)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
 fun TextFieldShow(from: Int, value: String, fieldratio: Float, valueAlter: (info: String) -> Unit) {
     OutlinedTextField(
-        modifier = Modifier.padding(2.dp).
-        fillMaxWidth(fieldratio),
+        modifier = Modifier
+            .padding(2.dp)
+            .fillMaxWidth(fieldratio),
         value = value,
         onValueChange = { valueAlter(it) },
         placeholder = {
