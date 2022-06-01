@@ -11,6 +11,9 @@ class MainViewModel: ViewModel() {
     val _loginUser = MutableLiveData<FirebaseUser>()
         val loginUser: LiveData<FirebaseUser> = _loginUser
 
+    val _textFileContent = MutableLiveData<String>()
+    val textFileContent: LiveData<String> = _textFileContent
+
     fun updateUserStatus(auth: FirebaseAuth) {
         _loginUser.value = auth.currentUser
         Log.v("Test", "updateUserStatus ${auth.currentUser?.email}" )
@@ -51,6 +54,10 @@ class MainViewModel: ViewModel() {
             }
         }
         return foodInfo
+    }
+
+    fun setTxtFileContent(content: String) {
+        _textFileContent.value = content
     }
 
     companion object {
