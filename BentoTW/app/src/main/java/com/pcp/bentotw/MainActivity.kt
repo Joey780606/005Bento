@@ -22,6 +22,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -165,54 +166,110 @@ fun LoginScreen02(navController: NavController, auth: FirebaseAuth, context: Con
         )
         TextFieldShow(MainViewModel.TEXT_EMAIL, emailText, 0.8f) { info -> emailText = info }
         TextFieldShow(MainViewModel.TEXT_PASSWORD, passwordText, 0.8f) { info -> passwordText = info }
-        Button( //Button只是一個容器,裡面要放文字,就是要再加一個Text
-            //modifier = Modifier.fillMaxHeight(0.5f),
-            //enabled = false,
-            enabled = true, //如果 enabled 設為false, border, interactionSource就不會有變化
-            interactionSource = interactionSourceTest,
-            elevation = ButtonDefaults.elevation(
-                defaultElevation = 6.dp,
-                pressedElevation = 8.dp,
-                disabledElevation = 2.dp
-            ),
-            shape = RoundedCornerShape(8.dp),
-            border = BorderStroke(5.dp, color = borderColor),
-            colors = ButtonDefaults.buttonColors(
-                backgroundColor = Color.White,
-                contentColor = Color.Red),
-            contentPadding = PaddingValues(4.dp, 3.dp, 2.dp, 1.dp),
-            onClick = { if(loginUserMail == "") {
-                if(emailText.isEmpty()) {
-                    Toast.makeText(context, "Please enter account", Toast.LENGTH_LONG).show()
-                    return@Button
-                }
-                if(passwordText.isEmpty()) {
-                    Toast.makeText(context, "Please enter password", Toast.LENGTH_LONG).show()
-                    return@Button
-                }
-                auth.signInWithEmailAndPassword(emailText,passwordText)
-                    .addOnFailureListener { exception ->
-                        Toast.makeText(context, "Login error: ${exception.localizedMessage}", Toast.LENGTH_LONG).show()
-                    }.addOnSuccessListener { result ->
-                        result.user?.let { userInfo ->
-                            if (!userInfo.isEmailVerified) {
-                                userInfo.sendEmailVerification().addOnSuccessListener {
-                                    openDialog.value = DIALOG_OPEN
-                                    Log.v("TEST", "verify 02: Send verification")
-                                }.addOnFailureListener { error ->
-                                    Toast.makeText(context, "Account create success but fail verification! error: ${error.message}", Toast.LENGTH_LONG).show()
-                                }
-                                auth.signOut()
-                            } else {
-                                Toast.makeText(context, "Already sign and verify, go to next", Toast.LENGTH_LONG).show()
+        Row(modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center) {
+            Button( //Button只是一個容器,裡面要放文字,就是要再加一個Text
+                modifier = Modifier.fillMaxWidth(0.5f)
+                    .alpha(if(emailText.isEmpty()) 0f else 100f),   //讓元件消失的方法
+                //enabled = false,
+                enabled = true, //如果 enabled 設為false, border, interactionSource就不會有變化
+                interactionSource = interactionSourceTest,
+                elevation = ButtonDefaults.elevation(
+                    defaultElevation = 6.dp,
+                    pressedElevation = 8.dp,
+                    disabledElevation = 2.dp
+                ),
+                shape = RoundedCornerShape(8.dp),
+                border = BorderStroke(5.dp, color = borderColor),
+                colors = ButtonDefaults.buttonColors(
+                    backgroundColor = Color.White,
+                    contentColor = Color.Red
+                ),
+                contentPadding = PaddingValues(4.dp, 3.dp, 2.dp, 1.dp),
+                onClick = {
+                        if (emailText.isEmpty()) {
+                            Toast.makeText(context, context.getText(R.string.enter_email), Toast.LENGTH_LONG).show()    //注意,文字要這樣使用
+                            return@Button
+                        }
+                        auth.sendPasswordResetEmail(emailText).addOnCompleteListener {  task ->
+                            task.addOnSuccessListener {
+                                Toast.makeText(context, context.getText(R.string.send_reset_pwd_email_ok), Toast.LENGTH_LONG).show()
+                            }
+                            task.addOnFailureListener { error ->
+                                Toast.makeText(context, context.getText(R.string.send_reset_pwd_email_fail).toString() + error.localizedMessage, Toast.LENGTH_LONG).show()
                             }
                         }
+                })
+            {
+                Text(text = stringResource(R.string.forget_password))
+            }
+
+            Button( //Button只是一個容器,裡面要放文字,就是要再加一個Text
+                modifier = Modifier.fillMaxWidth(0.5f),
+                //enabled = false,
+                enabled = true, //如果 enabled 設為false, border, interactionSource就不會有變化
+                interactionSource = interactionSourceTest,
+                elevation = ButtonDefaults.elevation(
+                    defaultElevation = 6.dp,
+                    pressedElevation = 8.dp,
+                    disabledElevation = 2.dp
+                ),
+                shape = RoundedCornerShape(8.dp),
+                border = BorderStroke(5.dp, color = borderColor),
+                colors = ButtonDefaults.buttonColors(
+                    backgroundColor = Color.White,
+                    contentColor = Color.Red
+                ),
+                contentPadding = PaddingValues(4.dp, 3.dp, 2.dp, 1.dp),
+                onClick = {
+                    if (loginUserMail == "") {
+                        if (emailText.isEmpty()) {
+                            Toast.makeText(context, "Please enter account", Toast.LENGTH_LONG)
+                                .show()
+                            return@Button
+                        }
+                        if (passwordText.isEmpty()) {
+                            Toast.makeText(context, "Please enter password", Toast.LENGTH_LONG)
+                                .show()
+                            return@Button
+                        }
+                        auth.signInWithEmailAndPassword(emailText, passwordText)
+                            .addOnFailureListener { exception ->
+                                Toast.makeText(
+                                    context,
+                                    "Login error: ${exception.localizedMessage}",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                            }.addOnSuccessListener { result ->
+                                result.user?.let { userInfo ->
+                                    if (!userInfo.isEmailVerified) {
+                                        userInfo.sendEmailVerification().addOnSuccessListener {
+                                            openDialog.value = DIALOG_OPEN
+                                            Log.v("TEST", "verify 02: Send verification")
+                                        }.addOnFailureListener { error ->
+                                            Toast.makeText(
+                                                context,
+                                                "Account create success but fail verification! error: ${error.localizedMessage}",
+                                                Toast.LENGTH_LONG
+                                            ).show()
+                                        }
+                                        auth.signOut()
+                                    } else {
+                                        Toast.makeText(
+                                            context,
+                                            "Already sign and verify, go to next",
+                                            Toast.LENGTH_LONG
+                                        ).show()
+                                    }
+                                }
+                            }
+                    } else {
+                        auth.signOut()
                     }
-            } else {
-                auth.signOut()
-            } })
-        {
-            Text(text = if(loginUserMail == "") "Login" else "Logout")
+                })
+            {
+                Text(text = if (loginUserMail == "") "Login" else "Logout")
+            }
         }
 
         Button( //Button只是一個容器,裡面要放文字,就是要再加一個Text

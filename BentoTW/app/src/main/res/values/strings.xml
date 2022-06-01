@@ -11,6 +11,11 @@
     <string name="create_new_account">Create new account</string>
 
     <string name="send_confirm_mail">The system will send a verification email, please go to your mailbox to receive the email and verify the email</string>
+    <string name="forget_password">Forget password</string>
+
+    <string name="enter_email">Please enter e-mail</string>
+    <string name="send_reset_pwd_email_ok">Already send e-mail for reset password, please check.</string>
+    <string name="send_reset_pwd_email_fail">"Fail to send reset password e-mail, reason:"</string>
 
     <string name="success">成功</string>
     <string name="ok">OK</string>

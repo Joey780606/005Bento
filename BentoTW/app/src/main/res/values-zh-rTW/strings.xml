@@ -11,6 +11,11 @@
     <string name="create_new_account">建立新帳戶</string>
 
     <string name="send_confirm_mail">系統將發送驗證郵件,請您至信箱收信,並驗證郵件</string>
+    <string name="forget_password">忘記密碼</string>
+
+    <string name="enter_email">請輸入e-mail</string>
+    <string name="send_reset_pwd_email_ok">己傳送重設密碼的e-mail,請檢查郵件</string>
+    <string name="send_reset_pwd_email_fail">"傳送重設密碼的e-mail失敗,理由:"</string>
 
     <string name="success">成功</string>
     <string name="ok">OK</string>
