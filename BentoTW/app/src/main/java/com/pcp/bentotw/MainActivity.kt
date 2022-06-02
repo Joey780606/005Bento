@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.app.ActivityCompat
 import androidx.core.app.ActivityCompat.startActivityForResult
+import androidx.core.text.isDigitsOnly
 import androidx.navigation.NavController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -103,10 +104,21 @@ class MainActivity : ComponentActivity() {
                 if(resultCode == RESULT_OK) {
                     data.data?.let { uri ->
                         var fileContent = readTextFile(uri)
-                        this@MainActivity.mainViewModel.setTxtFileContent(fileContent)
-                        Log.v("TEST", "file content: $fileContent")
-                    }
+                        var displayInfo = ""
 
+                        if(fileContent.size == 1 && fileContent[0].correct != PARSE_SUCCESS) {
+                            when(fileContent[0].correct) {
+                                PARSE_ERROR_FIELD_NEED_DIGIT -> displayInfo = "Error: Some fields need digit.  "
+                                PARSE_ERROR_FIRST_NOT_RESTAURANT -> displayInfo = "Error: First line should be restaurant data.  "
+                                PARSE_ERROR_FIELD_AMOUNT -> displayInfo = "Error: Wrong fields amount.  "
+                                PARSE_ERROR_FIELD_OTHER -> displayInfo = "Error: Other.  "
+                            }
+                            displayInfo += "Line no: ${fileContent[0].lineNumber}\nContent: ${fileContent[0].content}"
+                        } else {
+                            displayInfo += "File data is correct."
+                        }
+                        this@MainActivity.mainViewModel.setTxtFileContent(displayInfo)
+                    }
                 }
             }
         }
@@ -146,14 +158,17 @@ class MainActivity : ComponentActivity() {
                         FunctionList05(navController = navController, auth, applicationContext, mainViewModel)
                     }
                     composable("shop_txt_process") {
-                        ShopTxtProcess08(navController = navController,this@MainActivity, mainViewModel)
+                        ShopTxtProcess08(navController = navController, applicationContext, this@MainActivity, mainViewModel)
                     }
                 }
             }
         }
     }
 
-    private fun readTextFile(uri: Uri): String {
+    private fun readTextFile(uri: Uri): MutableList<FileStruct> {
+        var sentenceList: MutableList<String> = ArrayList() //重要,宣告方式
+        var parseInfo: MutableList<FileStruct> = ArrayList()
+
         var reader: BufferedReader? = null
         val builder = StringBuilder()
         try {
@@ -161,24 +176,69 @@ class MainActivity : ComponentActivity() {
             var line: String? = ""
             while (reader.readLine().also { line = it } != null) {
                 builder.append(line)
+                line?.let { sentenceList.add(it) }
                 builder.append(System.getProperty("line.separator"));   //重要,這樣才能把換行\r\n加進去
             }
             reader.close()
+            var count = 0
+            var parseFail = PARSE_SUCCESS
+            for(info in sentenceList) {
+                val dataSplit = info.split(",".toRegex())
+                if(info.isNotEmpty()) {
+                    if(dataSplit.size < 4)
+                        parseFail = PARSE_ERROR_FIELD_AMOUNT
+                    else if(!dataSplit[0].isDigitsOnly() || dataSplit[0].isEmpty())
+                        parseFail = PARSE_ERROR_FIELD_NEED_DIGIT
+                    else if(!dataSplit[1].isDigitsOnly() || dataSplit[1].isEmpty())
+                        parseFail = PARSE_ERROR_FIELD_NEED_DIGIT
+                    else if(!dataSplit[3].isDigitsOnly() || dataSplit[3].isEmpty())
+                        parseFail = PARSE_ERROR_FIELD_NEED_DIGIT
+                    else if(count == 0 && dataSplit[1] != "0")    //Line 1 but not shop type
+                        parseFail = PARSE_ERROR_FIRST_NOT_RESTAURANT
+                    else if(dataSplit[1] == "0" && dataSplit.size != 5 && dataSplit.size != 6)
+                        parseFail = PARSE_ERROR_FIELD_AMOUNT
+                    else if(dataSplit[1] != "0" && dataSplit.size != 4 && dataSplit.size != 5)
+                        parseFail = PARSE_ERROR_FIELD_AMOUNT
+                    val value = FileStruct(parseFail, count + 1, info, dataSplit)
+                    if(parseFail != PARSE_SUCCESS)
+                        parseInfo.clear()   //先清掉之前成功的資料,獨留有問題的資料
+                    parseInfo.add(value)
+                    Log.v("TEST", "parse Sentence: $info -> len= ${dataSplit.count()} ->$parseFail")
+                    if(parseFail != PARSE_SUCCESS)
+                        break;
+                }
+                count++
+            }
         } catch (e: IOException) {
             e.printStackTrace()
         }
-        return builder.toString()
+        return parseInfo
     }
 
     companion object {
-        val DIALOG_CLOSE = 0
-        val DIALOG_OPEN = 1
-        val DIALOG_CLOSE_BACK_PRIOR = 2
+        const val DIALOG_CLOSE = 0  //重要:AS建議要用 const val,但要查為什麼
+        const val DIALOG_OPEN = 1
+        const val DIALOG_CLOSE_BACK_PRIOR = 2
 
-        val DIALOG_TYPE_OK = 0
-        val TEXT_FILE_SAMPLE = "0,0,一鴻燒臘,25569779,台北市大同區南京西路232號\n" +
-                "0,1,脆皮鴨腿飯,140\n" +
-                "0,1,玫塊雞腿飯,120\n"
+        const val DIALOG_TYPE_OK = 0
+
+        const val TEXT_FILE_SAMPLE = "0,0,栢能餐廳,25569779,台北市大同區承德路一段70號,a.此欄備註(可不填) b.餐廳第二項數字皆填0 c.先放餐廳資料再放食物資料\n" +
+                "0,1,脆皮鴨腿飯,140,備註(所有行第一項數字皆填0,系統用)\n" +
+                "0,1,玫塊雞腿飯,120,備註(飯類第二項數字填1)\n" +
+                "0,2,土魠魚焿米粉,70,麵食類第二項數字填2\n" +
+                "0,3,滷獅子頭,30,小菜類第二項數字填3\n" +
+                "0,4,香菇湯,60,湯類第二項數字填4\n" +
+                "0,1,魯肉飯(小),25\n" +
+                "0,1,魯肉飯(大),40\n" +
+                "0,0,小麥小館,88888888,台北市大同區承德路一段70號,可放多筆資料(需保持店名在前菜色在後)\n" +
+                "0,1,黯然消魂飯,500,每天限量一份\n" +
+                "0,2,陽春麵,60\n"
+
+        const val PARSE_SUCCESS = 0
+        const val PARSE_ERROR_FIELD_NEED_DIGIT = 1
+        const val PARSE_ERROR_FIRST_NOT_RESTAURANT = 2
+        const val PARSE_ERROR_FIELD_AMOUNT = 3
+        const val PARSE_ERROR_FIELD_OTHER = 4
     }
 }
 
@@ -663,22 +723,25 @@ fun FunctionList05(navController: NavController, auth: FirebaseAuth, context: Co
 
 
 @Composable
-fun ShopTxtProcess08(navController: NavController, mainActivity: MainActivity, mainViewModel: MainViewModel) {
+fun ShopTxtProcess08(navController: NavController, context: Context, activity: MainActivity, mainViewModel: MainViewModel) {
     val interactionSourceTest = remember { MutableInteractionSource() }
     val pressState = interactionSourceTest.collectIsPressedAsState()
     val borderColor = if (pressState.value) Blue31B6FB else Blue00E6FE //Import com.pcp.composecomponent.ui.theme.Blue31B6FB
 
-    val fileContent by mainViewModel._textFileContent.observeAsState("")
-    Column(modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.SpaceEvenly,
-        horizontalAlignment = Alignment.CenterHorizontally) {
+    val fileContent by mainViewModel._textFileContent.observeAsState(stringResource(R.string.process_status))
 
-        Row(
-            horizontalArrangement = Arrangement.SpaceAround,
+    Column(modifier = Modifier
+        .fillMaxSize()
+        .background(color = Green4DCEE3),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally) {
+        Row(modifier = Modifier
+            .fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically
         ) {
-
             Button( //Button只是一個容器,裡面要放文字,就是要再加一個Text
+                modifier = Modifier.weight(1f).padding(start = 20.dp),  //重要,要讓Row的資料集中顯示, 左邊的要用 padding(start, 右邊的要用 .padding(end
                 enabled = true, //如果 enabled 設為false, border, interactionSource就不會有變化
                 interactionSource = interactionSourceTest,
                 elevation = ButtonDefaults.elevation(
@@ -689,7 +752,51 @@ fun ShopTxtProcess08(navController: NavController, mainActivity: MainActivity, m
                 shape = RoundedCornerShape(8.dp),
                 border = BorderStroke(5.dp, color = borderColor),
                 colors = ButtonDefaults.buttonColors(
-                    backgroundColor = Color.White,
+                    backgroundColor = Green0091A7,
+                    contentColor = Color.Red
+                ),
+                contentPadding = PaddingValues(4.dp, 3.dp, 2.dp, 1.dp),
+
+                onClick = {
+                    var inputStream: InputStream = MainActivity.TEXT_FILE_SAMPLE.byteInputStream()
+                    //val storeDirectory = mainActivity.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS) // DCIM folder
+                    //val storeDirectory = mainActivity.getExternalFilesDir(Environment.DIRECTORY_DCIM)
+                    val storeDirectory = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+
+                    val outputFile = File(storeDirectory, "BentoShopSample.txt")
+                    inputStream.use { input ->
+                        val outputStream = FileOutputStream(outputFile)
+                        outputStream.use { output ->
+                            val buffer = ByteArray(4 * 1024) // buffer size
+                            while (true) {
+                                val byteCount = input.read(buffer)
+                                if (byteCount < 0) break
+                                output.write(buffer, 0, byteCount)
+                            }
+                            output.flush()
+                            output.close()
+                            Log.v("TEST", "download file success")
+                        }
+                    }
+
+                }
+            ) {
+                Text(text = stringResource(R.string.download_shop_sample_file), color = Green4DCEE3, fontSize = 15.sp)
+            }
+
+            Button( //Button只是一個容器,裡面要放文字,就是要再加一個Text
+                modifier = Modifier.weight(1f).padding(end = 20.dp),
+                enabled = true, //如果 enabled 設為false, border, interactionSource就不會有變化
+                interactionSource = interactionSourceTest,
+                elevation = ButtonDefaults.elevation(
+                    defaultElevation = 6.dp,
+                    pressedElevation = 8.dp,
+                    disabledElevation = 2.dp
+                ),
+                shape = RoundedCornerShape(8.dp),
+                border = BorderStroke(5.dp, color = borderColor),
+                colors = ButtonDefaults.buttonColors(
+                    backgroundColor = Green0091A7,
                     contentColor = Color.Red
                 ),
                 contentPadding = PaddingValues(4.dp, 3.dp, 2.dp, 1.dp),
@@ -698,13 +805,19 @@ fun ShopTxtProcess08(navController: NavController, mainActivity: MainActivity, m
                     //val mimeTypes =
                     //    arrayOf("image/*", "video/*")   //我們只要Image, 但為測試多個可能,就把二個都加入,但實測上發現沒有效果
                     //fileIntent.putExtra(Intent.EXTRA_MIME_TYPES, mimeTypes)
-                    startActivityForResult(mainActivity, fileIntent, SELECT_TEXT_FILE_ID, null)
+                    startActivityForResult(activity, fileIntent, SELECT_TEXT_FILE_ID, null)
                 })
             {
-                Text(text = "Upload txt file")
+                Text(text = stringResource(R.string.download_shop_file), color = Green4DCEE3, fontSize = 15.sp)
             }
+        }
 
+        Row(
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             Button( //Button只是一個容器,裡面要放文字,就是要再加一個Text
+                modifier = Modifier.weight(1f).padding(start = 20.dp),
                 enabled = true, //如果 enabled 設為false, border, interactionSource就不會有變化
                 interactionSource = interactionSourceTest,
                 elevation = ButtonDefaults.elevation(
@@ -715,7 +828,34 @@ fun ShopTxtProcess08(navController: NavController, mainActivity: MainActivity, m
                 shape = RoundedCornerShape(8.dp),
                 border = BorderStroke(5.dp, color = borderColor),
                 colors = ButtonDefaults.buttonColors(
-                    backgroundColor = Color.White,
+                    backgroundColor = Green0091A7,
+                    contentColor = Color.Red
+                ),
+                contentPadding = PaddingValues(4.dp, 3.dp, 2.dp, 1.dp),
+                onClick = {
+                    var fileIntent = Intent(Intent.ACTION_GET_CONTENT).setType("text/plain")
+                    //val mimeTypes =
+                    //    arrayOf("image/*", "video/*")   //我們只要Image, 但為測試多個可能,就把二個都加入,但實測上發現沒有效果
+                    //fileIntent.putExtra(Intent.EXTRA_MIME_TYPES, mimeTypes)
+                    startActivityForResult(activity, fileIntent, SELECT_TEXT_FILE_ID, null)
+                })
+            {
+                Text(text = stringResource(R.string.upload_shop_file), color = Green4DCEE3, fontSize = 15.sp)
+            }
+
+            Button( //Button只是一個容器,裡面要放文字,就是要再加一個Text
+                modifier = Modifier.weight(1f).padding(end = 20.dp),
+                enabled = true, //如果 enabled 設為false, border, interactionSource就不會有變化
+                interactionSource = interactionSourceTest,
+                elevation = ButtonDefaults.elevation(
+                    defaultElevation = 6.dp,
+                    pressedElevation = 8.dp,
+                    disabledElevation = 2.dp
+                ),
+                shape = RoundedCornerShape(8.dp),
+                border = BorderStroke(5.dp, color = borderColor),
+                colors = ButtonDefaults.buttonColors(
+                    backgroundColor = Green0091A7,
                     contentColor = Color.Red
                 ),
                 contentPadding = PaddingValues(4.dp, 3.dp, 2.dp, 1.dp),
@@ -725,7 +865,7 @@ fun ShopTxtProcess08(navController: NavController, mainActivity: MainActivity, m
                     //val storeDirectory = mainActivity.getExternalFilesDir(Environment.DIRECTORY_DCIM)
                     val storeDirectory = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
 
-                    val outputFile = File(storeDirectory, "testing-again2.txt")
+                    val outputFile = File(storeDirectory, "BentoShopSample.txt")
                     inputStream.use { input ->
                         val outputStream = FileOutputStream(outputFile)
                         outputStream.use { output ->
@@ -742,12 +882,15 @@ fun ShopTxtProcess08(navController: NavController, mainActivity: MainActivity, m
                     }
                 })
             {
-                Text(text = "Download txt file")
+                Text(text = stringResource(R.string.save_to_database), color = Green4DCEE3, fontSize = 15.sp)
             }
+
         }
         Text(
             text = fileContent,
-            modifier = Modifier.clickable(onClick = {
+            modifier = Modifier
+                .fillMaxWidth(1f)
+                .clickable(onClick = {
                 navController.navigate("initial_screen")
             })
         )
