@@ -22,18 +22,35 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDownward
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.ArrowDropUp
+import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.toSize
+import androidx.compose.ui.window.PopupProperties
+import androidx.compose.ui.window.SecureFlagPolicy
 import androidx.core.app.ActivityCompat
 import androidx.core.app.ActivityCompat.startActivityForResult
 import androidx.core.text.isDigitsOnly
@@ -730,10 +747,13 @@ fun ShopTxtProcess08(navController: NavController, context: Context, activity: M
 
     val fileContent by mainViewModel._textFileContent.observeAsState(stringResource(R.string.process_status))
 
+    val scrollState = rememberLazyListState()
+    val foodInfo = mainViewModel.findFood(1)
+
     Column(modifier = Modifier
         .fillMaxSize()
         .background(color = Green4DCEE3),
-        verticalArrangement = Arrangement.Center,
+        verticalArrangement = Arrangement.Top,
         horizontalAlignment = Alignment.CenterHorizontally) {
         Row(modifier = Modifier
             .fillMaxWidth(),
@@ -894,6 +914,99 @@ fun ShopTxtProcess08(navController: NavController, context: Context, activity: M
                 navController.navigate("initial_screen")
             })
         )
+        DropdownMenuShow()
+        LazyColumn(
+            modifier = Modifier.fillMaxWidth(0.8f)
+                .fillMaxHeight(0.8f)
+                .background(color = Purple500),
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 32.dp),
+            state = scrollState
+        ) {
+            var count = 1
+            Log.v("TEST", "food info 001: ${foodInfo.size}")
+            items(foodInfo.size) {
+                for(info in foodInfo) {
+                    info[count]?.let { food ->
+                        Text(food.name)
+                        Text(food.price)
+                        Text(food.memo)
+                        Text("-----")
+                        count++
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun DropdownMenuShow() {
+    var expanded by remember { mutableStateOf(false) }
+    val suggestions = listOf("Item1", "Item2", "Item3",)
+    var selectedText by remember { mutableStateOf("") } //重要: 這會要你 import library,最後AS會直接 import androidx.compose.runtime.*
+    var textfieldSize by remember { mutableStateOf(Size.Zero) }
+    val keyboardOption = KeyboardOptions(autoCorrect = true)   //重要,共有四項,都可以再加
+    val keyboardAction = KeyboardActions(onDone = {})
+
+    val icon2 = if (expanded) Icons.Filled.ArrowUpward else Icons.Filled.ArrowDownward
+    val icon = if (expanded) Icons.Filled.ArrowDropUp else Icons.Filled.ArrowDropDown
+
+    // 重要,下面三行是 interactionSource 的使用
+    val interactionSourceTest = remember { MutableInteractionSource() }
+    val pressState = interactionSourceTest.collectIsPressedAsState()
+    val borderColor = if (pressState.value) Blue31B6FB else Blue00E6FE  //Import com.pcp.composecomponent.ui.theme.YellowFFEB3B
+
+    OutlinedTextField(
+        value = selectedText,
+        onValueChange = { selectedText = it },
+        modifier = Modifier
+            .fillMaxWidth()
+            .onGloballyPositioned { coordinates ->  //重要
+                textfieldSize = coordinates.size.toSize()
+            },
+        enabled = true,
+        readOnly = true,
+        textStyle = TextStyle(color = Color.Blue, fontWeight = FontWeight.Bold),
+        label = { Text("OutlinedTextField & DropdownMenu")},
+        placeholder = { Text("Enter info") },
+        leadingIcon = {    //重要
+            Icon(icon2, "contentDescription",
+                Modifier.clickable { expanded = !expanded })
+        },
+        trailingIcon = {    //重要
+            Icon(icon, "contentDescription",
+                Modifier.clickable { expanded = !expanded })
+        },
+        isError = false,    //指示是否text fields的目前值是有錯的,若true, label, bottom indicator和 trailingIcon 預設都顯示錯誤的顏色
+        visualTransformation = PasswordVisualTransformation(), //可看原始碼
+        keyboardOptions = keyboardOption,
+        keyboardActions = keyboardAction,
+        singleLine = false,
+        maxLines = 2,
+        interactionSource = interactionSourceTest,
+        shape = RoundedCornerShape(8.dp),
+        colors = TextFieldDefaults.outlinedTextFieldColors(
+            backgroundColor = Purple200),
+    )
+    DropdownMenu(
+        expanded = expanded,
+        onDismissRequest = { expanded = false },
+        modifier = Modifier
+            .width(with(LocalDensity.current) {
+                textfieldSize.width.toDp() }),
+        offset = DpOffset(10.dp, 10.dp),
+        properties = PopupProperties(focusable = true, dismissOnClickOutside = false, securePolicy = SecureFlagPolicy.SecureOn), // 重要
+    ) {
+        suggestions.forEach { label ->
+            DropdownMenuItem(onClick = {
+                selectedText = label
+                expanded = false },
+                modifier = Modifier.background(Teal200),
+                contentPadding = PaddingValues(horizontal = 20.dp, vertical = 20.dp),
+                interactionSource = interactionSourceTest) {    //可以增加按下之類的處理
+                Text(text = label)
+            }
+        }
     }
 }
 
