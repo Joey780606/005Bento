@@ -14,6 +14,10 @@ class MainViewModel: ViewModel() {
     val _textFileContent = MutableLiveData<String>()
     val textFileContent: LiveData<String> = _textFileContent
 
+    var uploadShopInfo = mutableMapOf<Int, Shop>()
+    var uploadFoodInfo = mutableMapOf<Int, Food>()
+    var dropdownMenuShop = ""
+
     fun updateUserStatus(auth: FirebaseAuth) {
         _loginUser.value = auth.currentUser
         Log.v("Test", "updateUserStatus ${auth.currentUser?.email}" )
@@ -31,6 +35,26 @@ class MainViewModel: ViewModel() {
 
         val shopInfo = Shop(1, "一鴻燒臘", "25569779", "台北市大同區南京西路232號", "")
         return mapOf(1 to shopInfo) //重要, mapOf的用法
+    }
+
+    fun findFood(): Map<Int, Food> {
+        var foodInfo = mutableMapOf<Int, Food>()
+        if(dropdownMenuShop == "")
+            return foodInfo
+        else {
+            var shopID : Int
+            for (info in uploadShopInfo) {
+                if (info.value.name == dropdownMenuShop) {
+                    shopID = info.key
+                    for(food in uploadFoodInfo) {
+                        if(food.value.shopId == shopID)
+                            foodInfo[food.key] = food.value
+                    }
+                    break
+                }
+            }
+            return foodInfo
+        }
     }
 
     fun findFood(shopId: Int): List<Map<Int, Food>> {
@@ -58,6 +82,32 @@ class MainViewModel: ViewModel() {
 
     fun setTxtFileContent(content: String) {
         _textFileContent.value = content
+    }
+
+    fun parseUploadFile(fileContent: MutableList<FileStruct>) {
+        uploadShopInfo.clear()
+        uploadFoodInfo.clear()
+        var shopCount = 0
+        var foodCount = 0
+        for(info in fileContent) {
+            if(info.parse[1] == "0") {    //Shop
+                val shopInfo = Shop(++shopCount, info.parse[2], info.parse[3], info.parse[4], info.parse[5])    //TODO("Change digit to meaningful text")
+                uploadShopInfo[shopCount] = shopInfo
+                Log.v("TEST", "Parse Shop: $shopCount, ${info.parse[2]}")
+                //foodCount = 0
+            } else {    //Food
+                val foodInfo = Food(shopCount, foodCount, info.parse[1].toInt(), info.parse[2], info.parse[3], info.parse[4])
+                uploadFoodInfo[foodCount++] = foodInfo
+                Log.v("TEST", "Parse Food: $shopCount, $foodCount, ${info.parse[2]}")
+            }
+        }
+    }
+
+    fun findFoodInfo(label: String) {
+        dropdownMenuShop = label
+        _textFileContent.value?.let {
+            Log.v("Test", "Info1")
+            setTxtFileContent("$it ") } ?: Log.v("Test", "Info2")
     }
 
     companion object {

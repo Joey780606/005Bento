@@ -133,6 +133,7 @@ class MainActivity : ComponentActivity() {
                             displayInfo += "Line no: ${fileContent[0].lineNumber}\nContent: ${fileContent[0].content}"
                         } else {
                             displayInfo += "File data is correct."
+                            this@MainActivity.mainViewModel.parseUploadFile(fileContent)
                         }
                         this@MainActivity.mainViewModel.setTxtFileContent(displayInfo)
                     }
@@ -200,7 +201,7 @@ class MainActivity : ComponentActivity() {
             var count = 0
             var parseFail = PARSE_SUCCESS
             for(info in sentenceList) {
-                val dataSplit = info.split(",".toRegex())
+                var dataSplit : MutableList<String> = info.split(",".toRegex()).toMutableList()
                 if(info.isNotEmpty()) {
                     if(dataSplit.size < 4)
                         parseFail = PARSE_ERROR_FIELD_AMOUNT
@@ -216,6 +217,12 @@ class MainActivity : ComponentActivity() {
                         parseFail = PARSE_ERROR_FIELD_AMOUNT
                     else if(dataSplit[1] != "0" && dataSplit.size != 4 && dataSplit.size != 5)
                         parseFail = PARSE_ERROR_FIELD_AMOUNT
+
+                    if(dataSplit[1] == "0" && dataSplit.size == 5)
+                        dataSplit.add("")
+                    else(dataSplit[1] != "0" && dataSplit.size == 4)
+                        dataSplit.add("")
+
                     val value = FileStruct(parseFail, count + 1, info, dataSplit)
                     if(parseFail != PARSE_SUCCESS)
                         parseInfo.clear()   //先清掉之前成功的資料,獨留有問題的資料
@@ -453,7 +460,7 @@ fun LoginScreen02(navController: NavController, auth: FirebaseAuth, context: Con
             Text(text = "Create new account") }
 
         Text(text = if(loginUserMail == "") "Status: not login" else "Status: $loginUserMail login, nick name = $nickName")
-        Text(text = "order", modifier = Modifier.clickable { navController.navigate("choice_food_screen") })
+        //Text(text = "order", modifier = Modifier.clickable { navController.navigate("choice_food_screen") })
     }
 
     when (openDialog.value) {
@@ -748,8 +755,17 @@ fun ShopTxtProcess08(navController: NavController, context: Context, activity: M
     val fileContent by mainViewModel._textFileContent.observeAsState(stringResource(R.string.process_status))
 
     val scrollState = rememberLazyListState()
-    val foodInfo = mainViewModel.findFood(1)
+    //val foodInfo = mainViewModel.findFood(1)
+    val foodInfo = mainViewModel.findFood()
 
+    if(mainViewModel.uploadShopInfo.isNotEmpty()) {
+        for(data in mainViewModel.uploadShopInfo)
+            Log.v("TEST", "Shop info: ${data.key} = ${data.value} ")
+    }
+    if(mainViewModel.uploadFoodInfo.isNotEmpty()) {
+        for(data in mainViewModel.uploadFoodInfo)
+            Log.v("TEST", "Food info: ${data.key} = ${data.value} ")
+    }
     Column(modifier = Modifier
         .fillMaxSize()
         .background(color = Green4DCEE3),
@@ -904,7 +920,6 @@ fun ShopTxtProcess08(navController: NavController, context: Context, activity: M
             {
                 Text(text = stringResource(R.string.save_to_database), color = Green4DCEE3, fontSize = 15.sp)
             }
-
         }
         Text(
             text = fileContent,
@@ -914,35 +929,38 @@ fun ShopTxtProcess08(navController: NavController, context: Context, activity: M
                 navController.navigate("initial_screen")
             })
         )
-        DropdownMenuShow()
+        DropdownMenuShow(mainViewModel)
+        var count = 1
         LazyColumn(
-            modifier = Modifier.fillMaxWidth(0.8f)
-                .fillMaxHeight(0.8f)
+            modifier = Modifier.fillMaxWidth()
+                .fillMaxHeight()
                 .background(color = Purple500),
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 32.dp),
             state = scrollState
         ) {
-            var count = 1
+
             Log.v("TEST", "food info 001: ${foodInfo.size}")
-            items(foodInfo.size) {
-                for(info in foodInfo) {
-                    info[count]?.let { food ->
-                        Text(food.name)
-                        Text(food.price)
-                        Text(food.memo)
+            for (food in foodInfo) {
+                item {  //重要,用一項一項列會比較好
+                    Column(modifier = Modifier.fillMaxWidth().background(if (count % 2 == 0) Purple200  else Blue31B6FB)) {
+                        Text(food.value.name)
+                        Text(food.value.price)
+                        Text(food.value.memo)
                         Text("-----")
-                        count++
                     }
                 }
+                count++
             }
         }
     }
 }
 
 @Composable
-fun DropdownMenuShow() {
+fun DropdownMenuShow(mainViewModel: MainViewModel) {
     var expanded by remember { mutableStateOf(false) }
-    val suggestions = listOf("Item1", "Item2", "Item3",)
+    //val suggestions = listOf("Item1", "Item2", "Item3",)
+    //val suggestions = mainViewModel.uploadShopInfo
+    var suggestions : MutableList<String> = ArrayList()
     var selectedText by remember { mutableStateOf("") } //重要: 這會要你 import library,最後AS會直接 import androidx.compose.runtime.*
     var textfieldSize by remember { mutableStateOf(Size.Zero) }
     val keyboardOption = KeyboardOptions(autoCorrect = true)   //重要,共有四項,都可以再加
@@ -956,6 +974,14 @@ fun DropdownMenuShow() {
     val pressState = interactionSourceTest.collectIsPressedAsState()
     val borderColor = if (pressState.value) Blue31B6FB else Blue00E6FE  //Import com.pcp.composecomponent.ui.theme.YellowFFEB3B
 
+    var title = "No data"
+    if(mainViewModel.uploadShopInfo.isNotEmpty()) {
+        for(info in mainViewModel.uploadShopInfo) {
+            suggestions.add(info.value.name)
+        }
+        title = suggestions[0]
+    }
+
     OutlinedTextField(
         value = selectedText,
         onValueChange = { selectedText = it },
@@ -967,7 +993,7 @@ fun DropdownMenuShow() {
         enabled = true,
         readOnly = true,
         textStyle = TextStyle(color = Color.Blue, fontWeight = FontWeight.Bold),
-        label = { Text("OutlinedTextField & DropdownMenu")},
+        label = { if(suggestions.isEmpty()) Text("No data") else Text(suggestions[0])},
         placeholder = { Text("Enter info") },
         leadingIcon = {    //重要
             Icon(icon2, "contentDescription",
@@ -978,7 +1004,7 @@ fun DropdownMenuShow() {
                 Modifier.clickable { expanded = !expanded })
         },
         isError = false,    //指示是否text fields的目前值是有錯的,若true, label, bottom indicator和 trailingIcon 預設都顯示錯誤的顏色
-        visualTransformation = PasswordVisualTransformation(), //可看原始碼
+        //visualTransformation = PasswordVisualTransformation(), //可看原始碼
         keyboardOptions = keyboardOption,
         keyboardActions = keyboardAction,
         singleLine = false,
@@ -1000,7 +1026,8 @@ fun DropdownMenuShow() {
         suggestions.forEach { label ->
             DropdownMenuItem(onClick = {
                 selectedText = label
-                expanded = false },
+                expanded = false
+                mainViewModel.findFoodInfo(label) },
                 modifier = Modifier.background(Teal200),
                 contentPadding = PaddingValues(horizontal = 20.dp, vertical = 20.dp),
                 interactionSource = interactionSourceTest) {    //可以增加按下之類的處理
