@@ -6,6 +6,8 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.QuerySnapshot
 
 class MainViewModel: ViewModel() {
     val _loginUser = MutableLiveData<FirebaseUser>()
@@ -17,6 +19,9 @@ class MainViewModel: ViewModel() {
     var uploadShopInfo = mutableMapOf<Int, Shop>()
     var uploadFoodInfo = mutableMapOf<Int, Food>()
     var dropdownMenuShop = ""
+
+    var shopGetAmount = -1
+    var foodGetAmount = -1
 
     fun updateUserStatus(auth: FirebaseAuth) {
         _loginUser.value = auth.currentUser
@@ -108,6 +113,143 @@ class MainViewModel: ViewModel() {
         _textFileContent.value?.let {
             Log.v("Test", "Info1")
             setTxtFileContent("$it ") } ?: Log.v("Test", "Info2")
+    }
+
+    fun saveShopFoodFromFile(firestore: FirebaseFirestore) {
+        var bentoSite = firestore.collection("btShop")
+        var foodAmount = 0
+        var foodWriteSuccess = 0
+        for(shop in uploadShopInfo) {
+            val shopInfo = hashMapOf(
+                "name" to shop.value.name,
+                "tel" to shop.value.telephone,
+                "addr" to shop.value.address,
+                "memo" to shop.value.memo
+            )
+            bentoSite.document(shop.key.toString())
+                .set(shopInfo)
+                .addOnSuccessListener { docRefer ->
+                    Log.v("TEST", "DB write shop OK: ${shop.value.name} ${docRefer.toString()}")
+                }.addOnFailureListener { err ->
+                    Log.v("TEST", "DB write shop Fail: $err")
+                }
+        }
+
+        bentoSite = firestore.collection("btFood")
+        foodAmount = uploadFoodInfo.size
+        foodWriteSuccess = 0
+        for(food in uploadFoodInfo) {
+            val foodInfo = hashMapOf(
+                "shopId" to food.value.shopId,
+                "type" to food.value.type,
+                "name" to food.value.name,
+                "price" to food.value.price,
+                "memo" to food.value.memo
+            )
+            bentoSite.document(food.key.toString())
+                .set(foodInfo)
+                .addOnSuccessListener { foodRefer ->
+                    Log.v("TEST", "DB write food OK: ${food.value.name} ${foodRefer.toString()}")
+                    if(++foodWriteSuccess == foodAmount)
+                        setTxtFileContent("Write data into firestore success!")
+                }.addOnFailureListener { err ->
+                    Log.v("TEST", "DB write food Fail: $err")
+                }
+        }
+
+// 可以運作,但因不能刪除,所以先不要這樣用
+//        val bentoSite = firestore.collection("bento").document("shop")
+//        var foodSite = firestore.collection("bento").document("shop")
+//        for(shop in uploadShopInfo) {
+//            val shopInfo = hashMapOf(
+//                "name" to shop.value.name,
+//                "tel" to shop.value.telephone,
+//                "addr" to shop.value.address,
+//                "memo" to shop.value.memo
+//            )
+//            bentoSite.collection(shop.key.toString()).document(shop.value.name)
+//                .set(shopInfo)
+//                .addOnSuccessListener { docRefer ->
+//                    foodSite = firestore.collection("bento").document("shop").collection(shop.key.toString()).document(shop.value.name)
+//                    Log.v("TEST", "DB write shop OK: ${shop.value.name} ${docRefer.toString()}")
+//                    for(food in uploadFoodInfo) {
+//                        if(food.value.shopId == shop.value.id) {
+//                            val foodInfo = hashMapOf(
+//                                "shopId" to food.value.shopId,
+//                                "type" to food.value.type,
+//                                "name" to food.value.name,
+//                                "price" to food.value.price,
+//                                "memo" to food.value.memo
+//                            )
+//                            foodSite.collection(food.key.toString()).document(food.value.name)
+//                                .set(foodInfo)
+//                                .addOnSuccessListener { foodRefer ->
+//                                    Log.v("TEST", "DB write food OK: ${food.value.name} ${foodRefer.toString()}")
+//                                }.addOnFailureListener { err ->
+//                                    Log.v("TEST", "DB write food Fail: $err")
+//                                }
+//                        }
+//                        //foodSite.document()
+//                    }
+//                }.addOnFailureListener { err ->
+//                    Log.v("TEST", "DB write shop Fail: $err")
+//                }
+//        }
+
+    }
+
+    fun deleteShopFood(firestore: FirebaseFirestore) {
+        lateinit var value: QuerySnapshot
+        var infoSite = firestore.collection("btShop")
+        shopGetAmount = -1
+        foodGetAmount = -1
+        infoSite
+            .get()
+            .addOnSuccessListener { result ->
+                Log.d("TEST", "get Shop 00: ${result.size()} ")
+                shopGetAmount = result.size()
+                if(shopGetAmount == 0 && foodGetAmount == 0)
+                    saveShopFoodFromFile(firestore)
+                for (document in result) {
+                    Log.d("TEST", "get Shop: ${document.id} => ${document.data}")
+                    infoSite.document(document.id)
+                        .delete()
+                        .addOnSuccessListener {
+                            if(--shopGetAmount == 0 && foodGetAmount == 0)
+                                saveShopFoodFromFile(firestore)
+                            Log.d("TEST", "del Shop ok! ${document.id} ($shopGetAmount,$foodGetAmount")
+                        }
+                        .addOnFailureListener { e -> Log.w("TEST", "del Shop fail", e) }
+                }
+                value = result
+            }.addOnFailureListener { exception ->
+                Log.w("TEST", "Error getting documents.", exception)
+            }
+
+        infoSite = firestore.collection("btFood")
+        infoSite
+            .get()
+            .addOnSuccessListener { result ->
+                Log.d("TEST", "get food 00: ${result.size()} ")
+                foodGetAmount = result.size()
+                if(shopGetAmount == 0 && foodGetAmount == 0)
+                    saveShopFoodFromFile(firestore)
+                for (document in result) {
+                    Log.d("TEST", "get food: ${document.id} => ${document.data}")
+                    infoSite.document(document.id)
+                        .delete()
+                        .addOnSuccessListener {
+                            if(shopGetAmount == 0 && --foodGetAmount == 0)
+                                saveShopFoodFromFile(firestore)
+                            Log.d("TEST", "del food ok! ${document.id} ($shopGetAmount,$foodGetAmount")
+                        }
+                        .addOnFailureListener { e -> Log.w("TEST", "del food fail", e) }
+                }
+                value = result
+            }.addOnFailureListener { exception ->
+                Log.w("TEST", "Error getting documents.", exception)
+            }
+
     }
 
     companion object {

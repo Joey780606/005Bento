@@ -63,6 +63,8 @@ import com.google.firebase.analytics.ktx.analytics
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.UserProfileChangeRequest
 import com.google.firebase.auth.ktx.auth
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
 import com.pcp.bentotw.MainActivity.Companion.DIALOG_CLOSE
 import com.pcp.bentotw.MainActivity.Companion.DIALOG_CLOSE_BACK_PRIOR
@@ -89,6 +91,8 @@ const val REQUEST_PERMISSIONS_WRITE_EXTERNAL_STORAGE = 102
 class MainActivity : ComponentActivity() {
     private lateinit var analytics: FirebaseAnalytics
     private lateinit var auth: FirebaseAuth
+    private lateinit var firestore: FirebaseFirestore
+
     private val mainViewModel by viewModels<MainViewModel>()
 
     private val requiredPermissions = object : ArrayList<String>() {
@@ -148,6 +152,8 @@ class MainActivity : ComponentActivity() {
         setContent {
             analytics = Firebase.analytics
             auth = Firebase.auth
+
+            firestore = Firebase.firestore
             BentoTWTheme {
                 val navController = rememberNavController() //Navigation Step2
 
@@ -176,7 +182,7 @@ class MainActivity : ComponentActivity() {
                         FunctionList05(navController = navController, auth, applicationContext, mainViewModel)
                     }
                     composable("shop_txt_process") {
-                        ShopTxtProcess08(navController = navController, applicationContext, this@MainActivity, mainViewModel)
+                        ShopTxtProcess08(navController = navController, applicationContext, this@MainActivity, mainViewModel, firestore)
                     }
                 }
             }
@@ -747,7 +753,7 @@ fun FunctionList05(navController: NavController, auth: FirebaseAuth, context: Co
 
 
 @Composable
-fun ShopTxtProcess08(navController: NavController, context: Context, activity: MainActivity, mainViewModel: MainViewModel) {
+fun ShopTxtProcess08(navController: NavController, context: Context, activity: MainActivity, mainViewModel: MainViewModel, firestore: FirebaseFirestore) {
     val interactionSourceTest = remember { MutableInteractionSource() }
     val pressState = interactionSourceTest.collectIsPressedAsState()
     val borderColor = if (pressState.value) Blue31B6FB else Blue00E6FE //Import com.pcp.composecomponent.ui.theme.Blue31B6FB
@@ -896,30 +902,35 @@ fun ShopTxtProcess08(navController: NavController, context: Context, activity: M
                 ),
                 contentPadding = PaddingValues(4.dp, 3.dp, 2.dp, 1.dp),
                 onClick = {
-                    var inputStream: InputStream = MainActivity.TEXT_FILE_SAMPLE.byteInputStream()
-                    //val storeDirectory = mainActivity.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS) // DCIM folder
-                    //val storeDirectory = mainActivity.getExternalFilesDir(Environment.DIRECTORY_DCIM)
-                    val storeDirectory = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-
-                    val outputFile = File(storeDirectory, "BentoShopSample.txt")
-                    inputStream.use { input ->
-                        val outputStream = FileOutputStream(outputFile)
-                        outputStream.use { output ->
-                            val buffer = ByteArray(4 * 1024) // buffer size
-                            while (true) {
-                                val byteCount = input.read(buffer)
-                                if (byteCount < 0) break
-                                output.write(buffer, 0, byteCount)
-                            }
-                            output.flush()
-                            output.close()
-                            Log.v("TEST", "download file success")
-                        }
-                    }
+                    mainViewModel.setTxtFileContent("Writing data into firestore")
+                    mainViewModel.deleteShopFood(firestore)
+                    //mainViewModel.saveShopFoodFromFile(firestore)
                 })
             {
                 Text(text = stringResource(R.string.save_to_database), color = Green4DCEE3, fontSize = 15.sp)
             }
+        }
+        Button( //Button只是一個容器,裡面要放文字,就是要再加一個Text
+            modifier = Modifier.fillMaxWidth(),
+            enabled = true, //如果 enabled 設為false, border, interactionSource就不會有變化
+            interactionSource = interactionSourceTest,
+            elevation = ButtonDefaults.elevation(
+                defaultElevation = 6.dp,
+                pressedElevation = 8.dp,
+                disabledElevation = 2.dp
+            ),
+            shape = RoundedCornerShape(8.dp),
+            border = BorderStroke(5.dp, color = borderColor),
+            colors = ButtonDefaults.buttonColors(
+                backgroundColor = Green0091A7,
+                contentColor = Color.Red
+            ),
+            contentPadding = PaddingValues(4.dp, 3.dp, 2.dp, 1.dp),
+            onClick = {
+                navController.popBackStack()
+            })
+        {
+            Text(text = "Back to prior page", color = Green4DCEE3, fontSize = 15.sp)
         }
         Text(
             text = fileContent,
