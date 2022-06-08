@@ -195,6 +195,13 @@ class MainActivity : ComponentActivity() {
                     composable("schedule_bento") {
                         Schedule09(navController = navController, applicationContext, this@MainActivity, mainViewModel, auth, firestore)
                     }
+                    composable("order_bento") {
+                        Order10(navController = navController, applicationContext, this@MainActivity, mainViewModel, auth, firestore)
+                    }
+                    composable("storage_test") {
+                        StorageTest11(navController = navController, applicationContext, this@MainActivity, mainViewModel, auth, firestore)
+                    }
+
                 }
             }
         }
@@ -683,11 +690,11 @@ fun FunctionList05(navController: NavController, auth: FirebaseAuth, context: Co
     val pressState = interactionSourceTest.collectIsPressedAsState()
     val borderColor = if (pressState.value) Blue31B6FB else Blue00E6FE //Import com.pcp.composecomponent.ui.theme.Blue31B6FB
 
-    val foodList = listOf("Order", "Modify order", "Shop manager", "Schedule shop", "Logout")
+    val foodList = listOf("Order", "Modify order", "Shop manager", "Schedule shop", "Storage test", "Logout")
 
     Log.v("Test", "FunctionList05 in")
 
-    if(DB_INITIAL++ == 0)
+    //if(DB_INITIAL++ == 0)
         mainViewModel.getDBInfo(firestore)
 
     Column(modifier = Modifier
@@ -716,7 +723,8 @@ fun FunctionList05(navController: NavController, auth: FirebaseAuth, context: Co
                 contentPadding = PaddingValues(4.dp, 3.dp, 2.dp, 1.dp),
                 onClick = {
                     when (item) {
-                        "Order" -> Log.v("TEST", "123")
+                        "Order" ->
+                            navController.navigate("order_bento")
                         "Shop manager" -> {
                             navController.navigate("shop_txt_process")
                         }
@@ -728,6 +736,9 @@ fun FunctionList05(navController: NavController, auth: FirebaseAuth, context: Co
                         }
                         "Schedule shop" -> {
                             navController.navigate("schedule_bento")
+                        }
+                        "Storage test" -> {
+                            navController.navigate("storage_test")
                         }
                     }
                 })
@@ -1133,6 +1144,53 @@ fun Schedule09(navController: NavController, context: Context, activity: MainAct
     }
 }
 
+@Composable
+fun Order10(navController: NavController, context: Context, activity: MainActivity, mainViewModel: MainViewModel, auth: FirebaseAuth, firestore: FirebaseFirestore) {
+    val foodInfo = mainViewModel.getTodayFood(firestore)
+    val shopName = mainViewModel.getTodayShop()
+    Column(modifier = Modifier.fillMaxSize().background(color = Green4DCEE3), verticalArrangement = Arrangement.Top, horizontalAlignment = Alignment.CenterHorizontally) {
+        // Creating a button that on
+        // click displays/shows the DatePickerDialog
+        Spacer(modifier = Modifier.size(50.dp))  //Important
+        Button(modifier = Modifier.fillMaxWidth(0.8f),
+            onClick = { navController.popBackStack() },
+            colors = ButtonDefaults.buttonColors(backgroundColor = Color(0XFF0F9D58))) {
+            Text(text = "Back to prior page", color = Color.White)
+        }
+        if(shopName == "")
+            Text(text = "今日餐廳: 未設定")
+        else
+            Text(text = "今日餐廳: $shopName")
+        Text(text = "可選餐點:")
+        if(foodInfo.isEmpty())
+            Text("No data")
+        else {
+            for(info in foodInfo) {
+                //Card() {
+                    Row() {
+                        Text(
+                            modifier = Modifier.weight(0.5f),
+                            text = info.value.name
+                        )
+                        Text(
+                            modifier = Modifier.weight(0.5f),
+                            text = info.value.price
+                        )
+                    }
+                    Text(
+                        modifier = Modifier.fillMaxWidth(),
+                        text = info.value.memo
+                    )
+                //}
+            }
+        }
+    }
+}
+
+@Composable
+fun StorageTest11(navController: NavController, context: Context, activity: MainActivity, mainViewModel: MainViewModel, auth: FirebaseAuth, firestore: FirebaseFirestore) {
+
+}
 @Composable
 fun DropdownMenuShow(mainViewModel: MainViewModel) {
     var expanded by remember { mutableStateOf(false) }

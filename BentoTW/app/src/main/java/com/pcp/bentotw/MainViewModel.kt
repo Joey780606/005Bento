@@ -8,6 +8,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.QuerySnapshot
+import java.text.SimpleDateFormat
 
 class MainViewModel: ViewModel() {
     val _loginUser = MutableLiveData<FirebaseUser>()
@@ -273,9 +274,9 @@ class MainViewModel: ViewModel() {
     }
 
     fun getDBInfo(firestore: FirebaseFirestore) {
-        dbShopInfo.clear()
-        dbFoodInfo.clear()
-        dbScheduleInfo.clear()
+        getDBShopInfo(firestore)
+        getDBFoodInfo(firestore)
+        getDBScheduleInfo(firestore)
 
         var infoSite = firestore.collection("btShop")
         infoSite
@@ -290,23 +291,12 @@ class MainViewModel: ViewModel() {
             }.addOnFailureListener { exception ->
                 Log.w("TEST", "Error getting documents.", exception)
             }
+    }
 
-        infoSite = firestore.collection("btFood")
-        infoSite
-            .get()
-            .addOnSuccessListener { result ->
-                Log.d("TEST", "get DB food 00: ${result.size()} ")
-                foodGetAmount = result.size()
-                for (document in result) {
-                    Log.d("TEST", "get DB food: ${document.id} => ${document.data}")
-                    dbFoodInfo[document.id.toInt()] = Food(id = document.id.toInt(), shopId = document.data["shopId"].toString().toInt(), type = document.data["type"].toString().toInt(),
-                        name = document.data["name"].toString(), price = document.data["name"].toString(), memo = document.data["memo"].toString())
-                }
-            }.addOnFailureListener { exception ->
-                Log.w("TEST", "Error getting documents.", exception)
-            }
+    private fun getDBScheduleInfo(firestore: FirebaseFirestore) {
+        dbScheduleInfo.clear()
 
-        infoSite = firestore.collection("btSchedule")
+        val infoSite = firestore.collection("btSchedule")
         infoSite
             .get()
             .addOnSuccessListener { result ->
@@ -315,6 +305,44 @@ class MainViewModel: ViewModel() {
                 for (document in result) {
                     Log.d("TEST", "get Shop: ${document.id} => ${document.data}")
                     dbScheduleInfo[document.id] = Schedule(document.data["name"].toString(), document.data["setTime"] as Long, document.data["founder"] as String)
+                }
+            }.addOnFailureListener { exception ->
+                Log.w("TEST", "Error getting documents.", exception)
+            }
+    }
+
+    private fun getDBFoodInfo(firestore: FirebaseFirestore) {
+        dbShopInfo.clear()
+
+        val infoSite = firestore.collection("btFood")
+        infoSite
+            .get()
+            .addOnSuccessListener { result ->
+                Log.d("TEST", "get DB food 00: ${result.size()} ")
+                foodGetAmount = result.size()
+                for (document in result) {
+                    Log.d("TEST", "get DB food: ${document.id} => ${document.data}")
+                    dbFoodInfo[document.id.toInt()] = Food(id = document.id.toInt(), shopId = document.data["shopId"].toString().toInt(), type = document.data["type"].toString().toInt(),
+                        name = document.data["name"].toString(), price = document.data["price"].toString(), memo = document.data["memo"].toString())
+                }
+            }.addOnFailureListener { exception ->
+                Log.w("TEST", "Error getting documents.", exception)
+            }
+
+    }
+
+    private fun getDBShopInfo(firestore: FirebaseFirestore) {
+        dbShopInfo.clear()
+
+        val infoSite = firestore.collection("btShop")
+        infoSite
+            .get()
+            .addOnSuccessListener { result ->
+                Log.d("TEST", "get DB Shop 00: ${result.size()} ")
+                for (document in result) {
+                    //Log.d("TEST", "get DB Shop: ${document.id} => ${document.data} == ${document.data["name"]}")
+                    dbShopInfo[document.id.toInt()] = Shop(id = document.id.toInt(), name = document.data["name"].toString(), telephone = document.data["tel"].toString(),
+                        address = document.data["address"].toString(), memo = document.data["memo"].toString())
                 }
             }.addOnFailureListener { exception ->
                 Log.w("TEST", "Error getting documents.", exception)
@@ -353,6 +381,54 @@ class MainViewModel: ViewModel() {
                     Log.v("TEST", "DB write shop Fail: $err")
                     scheduleRefreshUpdateOK = 2
                 }
+    }
+
+    fun getTodayFood(firestore: FirebaseFirestore): MutableMap<Int, Food> {
+        var dbFoodResultInfo = mutableMapOf<Int, Food>()
+        var shopId = -1
+        var shop = getTodayShop()
+
+        if(shop == "")
+            return dbFoodResultInfo
+        else {
+            shopId = getShopIdFromName(shop)
+            if(shopId == -1)
+                return dbFoodResultInfo
+            else {
+                for(info in dbFoodInfo) {
+                    if(info.value.shopId == shopId) {
+                        dbFoodResultInfo[info.key] = info.value
+                    }
+                }
+                return dbFoodResultInfo
+            }
+        }
+    }
+
+    private fun getShopIdFromName(shop: String): Int {
+        for(info in dbShopInfo) {
+            if(info.value.name == shop) {
+                return info.key
+            }
+        }
+        return -1
+    }
+
+    public fun getTodayShop(): String {
+        val dateInfo = getDateTimeString(System.currentTimeMillis(), "yyyyMMdd")
+        var shopName = ""
+        for(info in dbScheduleInfo) {
+            if(info.key == dateInfo) {
+                shopName = info.value.name
+                break;
+            }
+        }
+        return shopName
+    }
+
+    private fun getDateTimeString(currentTimeMillis: Long, dateInfo: String): String {
+        val sdFormatter = SimpleDateFormat(dateInfo)
+        return sdFormatter.format(currentTimeMillis)
     }
 
     companion object {
