@@ -14,11 +14,22 @@ class MainViewModel: ViewModel() {
         val loginUser: LiveData<FirebaseUser> = _loginUser
 
     val _textFileContent = MutableLiveData<String>()
-    val textFileContent: LiveData<String> = _textFileContent
+        val textFileContent: LiveData<String> = _textFileContent
+
+    val _scheduleShop = MutableLiveData<String>("")
+        val scheduleShop: LiveData<String> = _scheduleShop
+
+    var _scheduleRefresh = MutableLiveData<Long>(0)
+        val scheduleRefresh: LiveData<Long> = _scheduleRefresh
+    var scheduleRefreshUpdateOK = 0
 
     var uploadShopInfo = mutableMapOf<Int, Shop>()
     var uploadFoodInfo = mutableMapOf<Int, Food>()
     var dropdownMenuShop = ""
+
+    var dbShopInfo = mutableMapOf<Int, Shop>()
+    var dbFoodInfo = mutableMapOf<Int, Food>()
+    var dbScheduleInfo = mutableMapOf<String, Schedule>()
 
     var shopGetAmount = -1
     var foodGetAmount = -1
@@ -89,6 +100,13 @@ class MainViewModel: ViewModel() {
         _textFileContent.value = content
     }
 
+    fun setScheduleContent(content: String) {
+        _scheduleShop.value = content
+    }
+
+    fun setScheduleRefresh(content: Long) {
+        _scheduleRefresh.value = content
+    }
     fun parseUploadFile(fileContent: MutableList<FileStruct>) {
         uploadShopInfo.clear()
         uploadFoodInfo.clear()
@@ -150,8 +168,10 @@ class MainViewModel: ViewModel() {
                 .set(foodInfo)
                 .addOnSuccessListener { foodRefer ->
                     Log.v("TEST", "DB write food OK: ${food.value.name} ${foodRefer.toString()}")
-                    if(++foodWriteSuccess == foodAmount)
+                    if(++foodWriteSuccess == foodAmount) {
                         setTxtFileContent("Write data into firestore success!")
+                        getDBInfo(firestore)
+                    }
                 }.addOnFailureListener { err ->
                     Log.v("TEST", "DB write food Fail: $err")
                 }
@@ -250,6 +270,89 @@ class MainViewModel: ViewModel() {
                 Log.w("TEST", "Error getting documents.", exception)
             }
 
+    }
+
+    fun getDBInfo(firestore: FirebaseFirestore) {
+        dbShopInfo.clear()
+        dbFoodInfo.clear()
+        dbScheduleInfo.clear()
+
+        var infoSite = firestore.collection("btShop")
+        infoSite
+            .get()
+            .addOnSuccessListener { result ->
+                Log.d("TEST", "get DB Shop 00: ${result.size()} ")
+                for (document in result) {
+                    //Log.d("TEST", "get DB Shop: ${document.id} => ${document.data} == ${document.data["name"]}")
+                    dbShopInfo[document.id.toInt()] = Shop(id = document.id.toInt(), name = document.data["name"].toString(), telephone = document.data["tel"].toString(),
+                      address = document.data["address"].toString(), memo = document.data["memo"].toString())
+                }
+            }.addOnFailureListener { exception ->
+                Log.w("TEST", "Error getting documents.", exception)
+            }
+
+        infoSite = firestore.collection("btFood")
+        infoSite
+            .get()
+            .addOnSuccessListener { result ->
+                Log.d("TEST", "get DB food 00: ${result.size()} ")
+                foodGetAmount = result.size()
+                for (document in result) {
+                    Log.d("TEST", "get DB food: ${document.id} => ${document.data}")
+                    dbFoodInfo[document.id.toInt()] = Food(id = document.id.toInt(), shopId = document.data["shopId"].toString().toInt(), type = document.data["type"].toString().toInt(),
+                        name = document.data["name"].toString(), price = document.data["name"].toString(), memo = document.data["memo"].toString())
+                }
+            }.addOnFailureListener { exception ->
+                Log.w("TEST", "Error getting documents.", exception)
+            }
+
+        infoSite = firestore.collection("btSchedule")
+        infoSite
+            .get()
+            .addOnSuccessListener { result ->
+                Log.d("TEST", "get Schedule 00: ${result.size()} ")
+                dbScheduleInfo.clear()
+                for (document in result) {
+                    Log.d("TEST", "get Shop: ${document.id} => ${document.data}")
+                    dbScheduleInfo[document.id] = Schedule(document.data["name"].toString(), document.data["setTime"] as Long, document.data["founder"] as String)
+                }
+            }.addOnFailureListener { exception ->
+                Log.w("TEST", "Error getting documents.", exception)
+            }
+    }
+
+    fun setShop(dateValue: String, shopName: String, firestore: FirebaseFirestore, auth: FirebaseAuth) {
+        val bentoSite = firestore.collection("btSchedule")
+            val shopInfo = hashMapOf(
+                "name" to shopName,
+                "setTime" to System.currentTimeMillis(),
+                "founder" to (auth.currentUser?.email ?: "")
+            )
+            bentoSite.document(dateValue.replace("/".toRegex() ,""))
+                .set(shopInfo)
+                .addOnSuccessListener { foodRefer ->
+                    Log.v("TEST", "DB write shop OK: $shopName ${foodRefer.toString()}")
+
+                    bentoSite
+                        .get()
+                        .addOnSuccessListener { result ->
+                            Log.d("TEST", "get Schedule 00: ${result.size()} ")
+                            dbScheduleInfo.clear()
+                            for (document in result) {
+                                Log.d("TEST", "get Shop: ${document.id} => ${document.data}")
+                                dbScheduleInfo[document.id] = Schedule(document.data["name"].toString(), document.data["setTime"] as Long, document.data["founder"] as String)
+                                scheduleRefreshUpdateOK = 1
+                                setScheduleRefresh(System.currentTimeMillis())
+                            }
+                        }.addOnFailureListener { exception ->
+                            Log.w("TEST", "Error getting documents.", exception)
+                            scheduleRefreshUpdateOK = 3
+                            setScheduleRefresh(System.currentTimeMillis())
+                        }
+                }.addOnFailureListener { err ->
+                    Log.v("TEST", "DB write shop Fail: $err")
+                    scheduleRefreshUpdateOK = 2
+                }
     }
 
     companion object {

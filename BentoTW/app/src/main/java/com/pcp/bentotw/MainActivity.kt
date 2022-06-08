@@ -1,5 +1,6 @@
 package com.pcp.bentotw
 
+import android.app.DatePickerDialog
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -8,6 +9,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Environment
 import android.util.Log
+import android.widget.DatePicker
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -38,12 +40,14 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
@@ -66,6 +70,7 @@ import com.google.firebase.auth.ktx.auth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
+import com.pcp.bentotw.MainActivity.Companion.DB_INITIAL
 import com.pcp.bentotw.MainActivity.Companion.DIALOG_CLOSE
 import com.pcp.bentotw.MainActivity.Companion.DIALOG_CLOSE_BACK_PRIOR
 import com.pcp.bentotw.MainActivity.Companion.DIALOG_OPEN
@@ -73,6 +78,9 @@ import com.pcp.bentotw.MainActivity.Companion.DIALOG_TYPE_OK
 import com.pcp.bentotw.ui.theme.*
 import kotlinx.coroutines.delay
 import java.io.*
+import java.text.SimpleDateFormat
+import java.util.*
+import kotlin.collections.ArrayList
 
 /*
     Arthur: Joey yang
@@ -179,10 +187,13 @@ class MainActivity : ComponentActivity() {
                     }
                     composable("function_list") {
                         //first screen
-                        FunctionList05(navController = navController, auth, applicationContext, mainViewModel)
+                        FunctionList05(navController = navController, auth, applicationContext, mainViewModel, firestore)
                     }
                     composable("shop_txt_process") {
                         ShopTxtProcess08(navController = navController, applicationContext, this@MainActivity, mainViewModel, firestore)
+                    }
+                    composable("schedule_bento") {
+                        Schedule09(navController = navController, applicationContext, this@MainActivity, mainViewModel, auth, firestore)
                     }
                 }
             }
@@ -269,6 +280,7 @@ class MainActivity : ComponentActivity() {
         const val PARSE_ERROR_FIRST_NOT_RESTAURANT = 2
         const val PARSE_ERROR_FIELD_AMOUNT = 3
         const val PARSE_ERROR_FIELD_OTHER = 4
+        var DB_INITIAL = 0
     }
 }
 
@@ -666,7 +678,7 @@ fun ChoiceFood04(navController: NavController, auth: FirebaseAuth, context: Cont
 }
 
 @Composable
-fun FunctionList05(navController: NavController, auth: FirebaseAuth, context: Context, mainViewModel: MainViewModel) {
+fun FunctionList05(navController: NavController, auth: FirebaseAuth, context: Context, mainViewModel: MainViewModel, firestore: FirebaseFirestore) {
     val interactionSourceTest = remember { MutableInteractionSource() }
     val pressState = interactionSourceTest.collectIsPressedAsState()
     val borderColor = if (pressState.value) Blue31B6FB else Blue00E6FE //Import com.pcp.composecomponent.ui.theme.Blue31B6FB
@@ -674,6 +686,9 @@ fun FunctionList05(navController: NavController, auth: FirebaseAuth, context: Co
     val foodList = listOf("Order", "Modify order", "Shop manager", "Schedule shop", "Logout")
 
     Log.v("Test", "FunctionList05 in")
+
+    if(DB_INITIAL++ == 0)
+        mainViewModel.getDBInfo(firestore)
 
     Column(modifier = Modifier
         .fillMaxSize()
@@ -710,6 +725,9 @@ fun FunctionList05(navController: NavController, auth: FirebaseAuth, context: Co
                                 authority.signOut()
                                 navController.navigate("login_screen")
                             }
+                        }
+                        "Schedule shop" -> {
+                            navController.navigate("schedule_bento")
                         }
                     }
                 })
@@ -783,7 +801,9 @@ fun ShopTxtProcess08(navController: NavController, context: Context, activity: M
             verticalAlignment = Alignment.CenterVertically
         ) {
             Button( //Button只是一個容器,裡面要放文字,就是要再加一個Text
-                modifier = Modifier.weight(1f).padding(start = 20.dp),  //重要,要讓Row的資料集中顯示, 左邊的要用 padding(start, 右邊的要用 .padding(end
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(start = 20.dp),  //重要,要讓Row的資料集中顯示, 左邊的要用 padding(start, 右邊的要用 .padding(end
                 enabled = true, //如果 enabled 設為false, border, interactionSource就不會有變化
                 interactionSource = interactionSourceTest,
                 elevation = ButtonDefaults.elevation(
@@ -827,7 +847,9 @@ fun ShopTxtProcess08(navController: NavController, context: Context, activity: M
             }
 
             Button( //Button只是一個容器,裡面要放文字,就是要再加一個Text
-                modifier = Modifier.weight(1f).padding(end = 20.dp),
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(end = 20.dp),
                 enabled = true, //如果 enabled 設為false, border, interactionSource就不會有變化
                 interactionSource = interactionSourceTest,
                 elevation = ButtonDefaults.elevation(
@@ -859,7 +881,9 @@ fun ShopTxtProcess08(navController: NavController, context: Context, activity: M
             verticalAlignment = Alignment.CenterVertically
         ) {
             Button( //Button只是一個容器,裡面要放文字,就是要再加一個Text
-                modifier = Modifier.weight(1f).padding(start = 20.dp),
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(start = 20.dp),
                 enabled = true, //如果 enabled 設為false, border, interactionSource就不會有變化
                 interactionSource = interactionSourceTest,
                 elevation = ButtonDefaults.elevation(
@@ -886,7 +910,9 @@ fun ShopTxtProcess08(navController: NavController, context: Context, activity: M
             }
 
             Button( //Button只是一個容器,裡面要放文字,就是要再加一個Text
-                modifier = Modifier.weight(1f).padding(end = 20.dp),
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(end = 20.dp),
                 enabled = true, //如果 enabled 設為false, border, interactionSource就不會有變化
                 interactionSource = interactionSourceTest,
                 elevation = ButtonDefaults.elevation(
@@ -937,13 +963,14 @@ fun ShopTxtProcess08(navController: NavController, context: Context, activity: M
             modifier = Modifier
                 .fillMaxWidth(1f)
                 .clickable(onClick = {
-                navController.navigate("initial_screen")
-            })
+                    navController.navigate("initial_screen")
+                })
         )
         DropdownMenuShow(mainViewModel)
         var count = 1
         LazyColumn(
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier
+                .fillMaxWidth()
                 .fillMaxHeight()
                 .background(color = Purple500),
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 32.dp),
@@ -953,7 +980,9 @@ fun ShopTxtProcess08(navController: NavController, context: Context, activity: M
             Log.v("TEST", "food info 001: ${foodInfo.size}")
             for (food in foodInfo) {
                 item {  //重要,用一項一項列會比較好
-                    Column(modifier = Modifier.fillMaxWidth().background(if (count % 2 == 0) Purple200  else Blue31B6FB)) {
+                    Column(modifier = Modifier
+                        .fillMaxWidth()
+                        .background(if (count % 2 == 0) Purple200 else Blue31B6FB)) {
                         Text(food.value.name)
                         Text(food.value.price)
                         Text(food.value.memo)
@@ -963,6 +992,144 @@ fun ShopTxtProcess08(navController: NavController, context: Context, activity: M
                 count++
             }
         }
+    }
+}
+
+@Composable
+fun Schedule09(navController: NavController, context: Context, activity: MainActivity, mainViewModel: MainViewModel, auth: FirebaseAuth, firestore: FirebaseFirestore) {
+    // Reference website: https://www.geeksforgeeks.org/date-picker-in-android-using-jetpack-compose/
+    val interactionSourceTest = remember { MutableInteractionSource() }
+    val pressState = interactionSourceTest.collectIsPressedAsState()
+    val borderColor = if (pressState.value) Blue31B6FB else Blue00E6FE //Import com.pcp.composecomponent.ui.theme.Blue31B6FB
+
+    val shopName by mainViewModel._scheduleShop.observeAsState()
+    val scheduleRefresh by mainViewModel._scheduleRefresh.observeAsState()  //後面要有人用,變化時才會refresh,即使是Log.v出來也可以
+
+    val scrollState = rememberLazyListState()
+
+    // Fetching the Local Context
+    val mContext = LocalContext.current
+
+    // Declaring integer values
+    // for year, month and day
+    val mYear: Int
+    val mMonth: Int
+    val mDay: Int
+
+    Log.v("TEST", "Schedule09 in $scheduleRefresh ${mainViewModel.scheduleRefreshUpdateOK}")
+    // Initializing a Calendar
+    val mCalendar = Calendar.getInstance()
+
+    // Fetching current year, month and day
+    mYear = mCalendar.get(Calendar.YEAR)
+    mMonth = mCalendar.get(Calendar.MONTH)
+    mDay = mCalendar.get(Calendar.DAY_OF_MONTH)
+
+    mCalendar.time = Date()
+
+    // Declaring a string value to
+    // store date in string format
+    val mDate = remember { mutableStateOf("") }
+
+    // Declaring DatePickerDialog and setting
+    // initial values as current values (present year, month and day)
+    val mDatePickerDialog = DatePickerDialog(
+        mContext,
+        { _: DatePicker, mYear: Int, mMonth: Int, mDayOfMonth: Int ->
+            //mDate.value = "$mDayOfMonth/${mMonth+1}/$mYear"
+            mDate.value = "%04d/%02d/%02d".format(mYear, mMonth+1, mDayOfMonth)
+        }, mYear, mMonth, mDay
+    )
+
+    Column(modifier = Modifier.fillMaxSize().background(color = Green4DCEE3), verticalArrangement = Arrangement.Top, horizontalAlignment = Alignment.CenterHorizontally) {
+        // Creating a button that on
+        // click displays/shows the DatePickerDialog
+        Spacer(modifier = Modifier.size(50.dp))  //Important
+        Row() {
+            Button(modifier = Modifier.weight(0.5f).padding(5.dp),
+                onClick = { mDatePickerDialog.show() },
+                colors = ButtonDefaults.buttonColors(backgroundColor = Color(0XFF0F9D58))) {
+                Text(text = "Open Date Picker", color = Color.White)
+            }
+
+            Button( //Button只是一個容器,裡面要放文字,就是要再加一個Text
+                modifier = Modifier.weight(0.5f).padding(5.dp),
+                shape = RoundedCornerShape(8.dp),
+                //border = BorderStroke(5.dp, color = borderColor),
+                colors = ButtonDefaults.buttonColors(
+                    backgroundColor = Color(0XFF0F9D58),
+                    contentColor = Color.White
+                ),
+                contentPadding = PaddingValues(4.dp, 3.dp, 2.dp, 1.dp),
+                onClick = {
+                    if (mDate.value == "" || shopName == "") {
+                        Toast.makeText(context, "Don't set Day or Shop", Toast.LENGTH_LONG).show()    //注意,文字要這樣使用
+                        return@Button
+                    } else
+                        shopName?.let { mainViewModel.setShop(mDate.value, it, firestore, auth) }
+                })
+            {
+                Text(text = "Set shop")
+            }
+        }
+        Button(modifier = Modifier.fillMaxWidth().padding(5.dp),
+            onClick = { navController.popBackStack() },
+            colors = ButtonDefaults.buttonColors(backgroundColor = Color(0XFF0F9D58))) {
+            Text(text = "Back to prior page", color = Color.White)
+        }
+
+        DropdownMenuDBShop(mainViewModel)
+
+        // Adding a space of 100dp height
+        //Spacer(modifier = Modifier.size(100.dp))  //Important
+
+        // Displaying the mDate value in the Text
+        Text(text = "Selected Date: ${mDate.value}", fontSize = 30.sp, textAlign = TextAlign.Center)
+        Text(text = "Selected Shop: $shopName", fontSize = 30.sp, textAlign = TextAlign.Center)
+
+        Spacer(modifier = Modifier.size(50.dp))  //Important
+        Text(text = "Schedule info:")
+        LazyColumn(
+            contentPadding = PaddingValues(horizontal = 16.dp),
+            state = scrollState
+        ) {
+            var count = 1
+            Log.v("TEST", "food info 001: ${mainViewModel.dbScheduleInfo.size}")
+            val sdFormatter = SimpleDateFormat("yyyy-MM-dd HH:mm:dd")
+            for(info in mainViewModel.dbScheduleInfo) {
+                val recordDateTime = Date(info.value.setTime)
+                item {  //重要,用一項一項列會比較好
+                    Column(modifier = Modifier
+                        .fillMaxWidth()
+                        .background(if (count % 2 == 0) Purple200 else Blue31B6FB)) {
+                        Text(info.value.name)
+                        Text(sdFormatter.format(recordDateTime))
+                        Text(info.value.founder)
+                        Text("-----")
+                    }
+                }
+            }
+//            items(foodInfo.size) {
+//                for(info in foodInfo) {
+//                    info[count]?.let { food ->
+//                        Text(food.name)
+//                        Text(food.price)
+//                        Text(food.memo)
+//                        Text("-----")
+//                        count++
+//                    }
+//                }
+//            }
+        }
+    }
+
+    if(mainViewModel.scheduleRefreshUpdateOK != 0) {
+        when(mainViewModel.scheduleRefreshUpdateOK) {
+            1 -> Toast.makeText(context, "Set shop success", Toast.LENGTH_LONG).show()
+            2 -> Toast.makeText(context, "Set shop fail", Toast.LENGTH_LONG).show()
+            3 -> Toast.makeText(context, "Set shop success but read fail!", Toast.LENGTH_LONG).show()
+        }
+        mainViewModel.scheduleRefreshUpdateOK = 0
     }
 }
 
@@ -1039,6 +1206,88 @@ fun DropdownMenuShow(mainViewModel: MainViewModel) {
                 selectedText = label
                 expanded = false
                 mainViewModel.findFoodInfo(label) },
+                modifier = Modifier.background(Teal200),
+                contentPadding = PaddingValues(horizontal = 20.dp, vertical = 20.dp),
+                interactionSource = interactionSourceTest) {    //可以增加按下之類的處理
+                Text(text = label)
+            }
+        }
+    }
+}
+
+@Composable
+fun DropdownMenuDBShop(mainViewModel: MainViewModel) {
+    var expanded by remember { mutableStateOf(false) }
+    //val suggestions = listOf("Item1", "Item2", "Item3",)
+    //val suggestions = mainViewModel.uploadShopInfo
+    var suggestions : MutableList<String> = ArrayList()
+    var selectedText by remember { mutableStateOf("") } //重要: 這會要你 import library,最後AS會直接 import androidx.compose.runtime.*
+    var textfieldSize by remember { mutableStateOf(Size.Zero) }
+    val keyboardOption = KeyboardOptions(autoCorrect = true)   //重要,共有四項,都可以再加
+    val keyboardAction = KeyboardActions(onDone = {})
+
+    val icon2 = if (expanded) Icons.Filled.ArrowUpward else Icons.Filled.ArrowDownward
+    val icon = if (expanded) Icons.Filled.ArrowDropUp else Icons.Filled.ArrowDropDown
+
+    // 重要,下面三行是 interactionSource 的使用
+    val interactionSourceTest = remember { MutableInteractionSource() }
+    val pressState = interactionSourceTest.collectIsPressedAsState()
+    val borderColor = if (pressState.value) Blue31B6FB else Blue00E6FE  //Import com.pcp.composecomponent.ui.theme.YellowFFEB3B
+
+    if(mainViewModel.dbShopInfo.isNotEmpty()) {
+        for(info in mainViewModel.dbShopInfo) {
+            suggestions.add(info.value.name)
+        }
+    } else {
+        suggestions.add("No data")
+    }
+
+    OutlinedTextField(
+        value = selectedText,
+        onValueChange = { selectedText = it },
+        modifier = Modifier
+            .fillMaxWidth()
+            .onGloballyPositioned { coordinates ->  //重要
+                textfieldSize = coordinates.size.toSize()
+            },
+        enabled = true,
+        readOnly = true,
+        textStyle = TextStyle(color = Color.Blue, fontWeight = FontWeight.Bold),
+        label = { if(suggestions.isEmpty()) Text("No data") else Text(suggestions[0])},
+        placeholder = { Text("Enter info") },
+        leadingIcon = {    //重要
+            Icon(icon2, "contentDescription",
+                Modifier.clickable { expanded = !expanded })
+        },
+        trailingIcon = {    //重要
+            Icon(icon, "contentDescription",
+                Modifier.clickable { expanded = !expanded })
+        },
+        isError = false,    //指示是否text fields的目前值是有錯的,若true, label, bottom indicator和 trailingIcon 預設都顯示錯誤的顏色
+        //visualTransformation = PasswordVisualTransformation(), //可看原始碼
+        keyboardOptions = keyboardOption,
+        keyboardActions = keyboardAction,
+        singleLine = false,
+        maxLines = 2,
+        interactionSource = interactionSourceTest,
+        shape = RoundedCornerShape(8.dp),
+        colors = TextFieldDefaults.outlinedTextFieldColors(
+            backgroundColor = Purple200),
+    )
+    DropdownMenu(
+        expanded = expanded,
+        onDismissRequest = { expanded = false },
+        modifier = Modifier
+            .width(with(LocalDensity.current) {
+                textfieldSize.width.toDp() }),
+        offset = DpOffset(10.dp, 10.dp),
+        properties = PopupProperties(focusable = true, dismissOnClickOutside = false, securePolicy = SecureFlagPolicy.SecureOn), // 重要
+    ) {
+        suggestions.forEach { label ->
+            DropdownMenuItem(onClick = {
+                selectedText = label
+                expanded = false
+                mainViewModel.setScheduleContent(label) },
                 modifier = Modifier.background(Teal200),
                 contentPadding = PaddingValues(horizontal = 20.dp, vertical = 20.dp),
                 interactionSource = interactionSourceTest) {    //可以增加按下之類的處理
