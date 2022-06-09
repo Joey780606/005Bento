@@ -290,7 +290,7 @@ class MainActivity : ComponentActivity() {
         const val DIALOG_TYPE_OK = 0
 
         const val TEXT_FILE_SAMPLE = "0,0,栢能餐廳,25569779,台北市大同區承德路一段70號,a.此欄備註(可不填) b.餐廳第二項數字皆填0 c.先放餐廳資料再放食物資料\n" +
-                "0,1,脆皮鴨腿飯,140,備註(所有行第一項數字皆填0,系統用)\n" +
+                "0,1,脆皮鴨腿飯,140,備註(所有行第一項數字皆填0-給系統用)\n" +
                 "0,1,玫塊雞腿飯,120,備註(飯類第二項數字填1)\n" +
                 "0,2,土魠魚焿米粉,70,麵食類第二項數字填2\n" +
                 "0,3,滷獅子頭,30,小菜類第二項數字填3\n" +
@@ -1138,9 +1138,10 @@ fun Schedule09(navController: NavController, context: Context, activity: MainAct
                     Column(modifier = Modifier
                         .fillMaxWidth()
                         .background(if (count % 2 == 0) Purple200 else Blue31B6FB)) {
-                        Text(info.value.name)
-                        Text(sdFormatter.format(recordDateTime))
-                        Text(info.value.founder)
+                        Text("日期: ${info.value.date}")
+                        Text("飯店名稱: ${info.value.name}")
+                        Text("設置時間: ${sdFormatter.format(recordDateTime)}")
+                        Text("設訂者: ${info.value.founder}")
                         Text("-----")
                     }
                 }
@@ -1472,11 +1473,11 @@ fun TextFieldShow(from: Int, value: String, fieldratio: Float, valueAlter: (info
         onValueChange = { valueAlter(it) },
         placeholder = {
             when (from) {
-                MainViewModel.TEXT_EMAIL -> Text(text = stringResource(R.string.email), color = Green0091A7)
-                MainViewModel.TEXT_PASSWORD -> Text(text = stringResource(R.string.password), color = Green0091A7)
-                MainViewModel.TEXT_NICKNAME -> Text(text = stringResource(R.string.nick_name), color = Green0091A7)
-                MainViewModel.TEXT_PASSWORD_CONFIRM -> Text(text = stringResource(R.string.confirm_password), color = Green0091A7)
-                MainViewModel.TEXT_NEW_ACCOUNT_EMAIL -> Text(text = stringResource(R.string.new_account_email), color = Green0091A7)
+                MainViewModel.TEXT_EMAIL -> Text(text = stringResource(R.string.email), color = WhiteFFFFFF)
+                MainViewModel.TEXT_PASSWORD -> Text(text = stringResource(R.string.password), color = WhiteFFFFFF)
+                MainViewModel.TEXT_NICKNAME -> Text(text = stringResource(R.string.nick_name), color = WhiteFFFFFF)
+                MainViewModel.TEXT_PASSWORD_CONFIRM -> Text(text = stringResource(R.string.confirm_password), color = WhiteFFFFFF)
+                MainViewModel.TEXT_NEW_ACCOUNT_EMAIL -> Text(text = stringResource(R.string.new_account_email), color = WhiteFFFFFF)
             }
         },
         shape = RoundedCornerShape(8.dp),

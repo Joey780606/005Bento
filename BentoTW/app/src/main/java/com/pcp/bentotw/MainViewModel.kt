@@ -312,7 +312,7 @@ class MainViewModel: ViewModel() {
                 dbScheduleInfo.clear()
                 for (document in result) {
                     Log.d("TEST", "get Shop: ${document.id} => ${document.data}")
-                    dbScheduleInfo[document.id] = Schedule(document.data["name"].toString(), document.data["setTime"] as Long, document.data["founder"] as String)
+                    dbScheduleInfo[document.id] = Schedule(document.id, document.data["name"].toString(), document.data["setTime"] as Long, document.data["founder"] as String)
                 }
             }.addOnFailureListener { exception ->
                 Log.w("TEST", "Error getting documents.", exception)
@@ -376,7 +376,7 @@ class MainViewModel: ViewModel() {
                             dbScheduleInfo.clear()
                             for (document in result) {
                                 Log.d("TEST", "get Shop: ${document.id} => ${document.data}")
-                                dbScheduleInfo[document.id] = Schedule(document.data["name"].toString(), document.data["setTime"] as Long, document.data["founder"] as String)
+                                dbScheduleInfo[document.id] = Schedule(document.id, document.data["name"].toString(), document.data["setTime"] as Long, document.data["founder"] as String)
                                 scheduleRefreshUpdateOK = 1
                                 setScheduleRefresh(System.currentTimeMillis())
                             }

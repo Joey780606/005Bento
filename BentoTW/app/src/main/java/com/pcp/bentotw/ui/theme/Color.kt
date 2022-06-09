@@ -16,3 +16,5 @@ val Blue00E6FE = Color(0xFF00E6FE)
 val Blue31B6FB = Color(0xFF31B6FB)
 
 val Blue0C1D36 = Color(0xFF0C1D36)  //Contrast color with 0xFF4DCEE3
+
+val WhiteFFFFFF = Color(0xFFFFFFFF)
