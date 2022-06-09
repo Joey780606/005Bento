@@ -25,6 +25,7 @@
     <string name="function_shop_process">商家資料處理</string>
     <string name="function_schedule_shop">每日便當商家排程</string>
     <string name="function_logout">登出</string>
+    <string name="function_storage_test">儲存測試</string>
 
     <string name="download_shop_sample_file">下載商家範例</string>
     <string name="download_shop_file">下載目前商家資料</string>

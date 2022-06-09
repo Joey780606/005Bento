@@ -1,5 +1,8 @@
 package com.pcp.bentotw
 
+import android.content.ContentResolver
+import android.net.Uri
+import android.provider.OpenableColumns
 import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
@@ -8,6 +11,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.QuerySnapshot
+import java.io.File
 import java.text.SimpleDateFormat
 
 class MainViewModel: ViewModel() {
@@ -23,6 +27,9 @@ class MainViewModel: ViewModel() {
     var _scheduleRefresh = MutableLiveData<Long>(0)
         val scheduleRefresh: LiveData<Long> = _scheduleRefresh
     var scheduleRefreshUpdateOK = 0
+
+    val _pictureFieUri = MutableLiveData<Uri?>()
+    val pictureFieUri: LiveData<Uri?> = _pictureFieUri
 
     var uploadShopInfo = mutableMapOf<Int, Shop>()
     var uploadFoodInfo = mutableMapOf<Int, Food>()
@@ -108,6 +115,7 @@ class MainViewModel: ViewModel() {
     fun setScheduleRefresh(content: Long) {
         _scheduleRefresh.value = content
     }
+
     fun parseUploadFile(fileContent: MutableList<FileStruct>) {
         uploadShopInfo.clear()
         uploadFoodInfo.clear()
@@ -426,9 +434,40 @@ class MainViewModel: ViewModel() {
         return shopName
     }
 
+    fun getFileName(uriInfo: Uri, activity: MainActivity): String {
+        when(uriInfo.scheme) {
+            ContentResolver.SCHEME_CONTENT -> {
+                Log.v("TEST", "Choice file2: ${getContentFileName(uriInfo, activity)}")
+                getContentFileName(uriInfo, activity)?.let { stringInfo ->
+                    return stringInfo
+                }
+                return ""
+            }
+            else -> {
+                Log.v("TEST", "Choice file3: ${uriInfo.path?.let(::File)?.name}")
+                uriInfo.path?.let(::File)?.let{ fileInfo ->
+                    return fileInfo.name
+                }
+                return ""
+            }
+        }
+    }
+
+    //Important: Need to learning.
+    private fun getContentFileName(uri: Uri, activity: MainActivity): String? = runCatching {
+        activity.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+            cursor.moveToFirst()
+            return@use cursor.getColumnIndexOrThrow(OpenableColumns.DISPLAY_NAME).let(cursor::getString)
+        }
+    }.getOrNull()
+
     private fun getDateTimeString(currentTimeMillis: Long, dateInfo: String): String {
         val sdFormatter = SimpleDateFormat(dateInfo)
         return sdFormatter.format(currentTimeMillis)
+    }
+
+    fun setReceivePictureUri(uriInfo: Uri?) {
+        _pictureFieUri.value = uriInfo
     }
 
     companion object {

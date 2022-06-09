@@ -25,6 +25,7 @@
     <string name="function_shop_process">Shop process</string>
     <string name="function_schedule_shop">Shop schedule</string>
     <string name="function_logout">Logout</string>
+    <string name="function_storage_test">Storage test</string>
 
     <string name="download_shop_sample_file">Download shops sample file</string>
     <string name="download_shop_file">Download shops file</string>

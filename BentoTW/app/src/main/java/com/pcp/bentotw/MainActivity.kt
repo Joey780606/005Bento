@@ -70,6 +70,8 @@ import com.google.firebase.auth.ktx.auth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
+import com.google.firebase.storage.FirebaseStorage
+import com.google.firebase.storage.ktx.storage
 import com.pcp.bentotw.MainActivity.Companion.DB_INITIAL
 import com.pcp.bentotw.MainActivity.Companion.DIALOG_CLOSE
 import com.pcp.bentotw.MainActivity.Companion.DIALOG_CLOSE_BACK_PRIOR
@@ -93,6 +95,7 @@ import kotlin.collections.ArrayList
     6. MutableLiveData, LiveData
     7. observeAsState
  */
+const val SELECT_FILE_ID: Int = 10
 const val SELECT_TEXT_FILE_ID: Int = 11
 const val REQUEST_PERMISSIONS_WRITE_EXTERNAL_STORAGE = 102
 
@@ -100,6 +103,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var analytics: FirebaseAnalytics
     private lateinit var auth: FirebaseAuth
     private lateinit var firestore: FirebaseFirestore
+    private lateinit var storage: FirebaseStorage
 
     private val mainViewModel by viewModels<MainViewModel>()
 
@@ -128,6 +132,20 @@ class MainActivity : ComponentActivity() {
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         when (requestCode) {
+            SELECT_FILE_ID -> if (data != null) {
+                //Log.v("TEST", "Choice file: ${data.data?.path}")
+                Log.v("TEST", "Choice file: ${File(data.data?.path).name}")
+
+                data.data?.let { uriInfo ->
+                    mainViewModel.setReceivePictureUri(uriInfo)
+                }
+//  Note: Already mark, but still need to study.
+//                when(data.data?.scheme) {
+//                    ContentResolver.SCHEME_CONTENT -> Log.v("TEST", "Choice file2: ${getContentFileName(data.data!!)}")
+//                    else -> Log.v("TEST", "Choice file3: ${data.data?.path?.let(::File)?.name}")
+//                }
+            }
+
             SELECT_TEXT_FILE_ID -> if (data != null) {
                 Log.v("TEST", "Choice file: ${data.data?.toString()}")
                 if(resultCode == RESULT_OK) {
@@ -162,6 +180,7 @@ class MainActivity : ComponentActivity() {
             auth = Firebase.auth
 
             firestore = Firebase.firestore
+            storage = Firebase.storage("gs://myfirebase-d8e25.appspot.com")
             BentoTWTheme {
                 val navController = rememberNavController() //Navigation Step2
 
@@ -199,7 +218,7 @@ class MainActivity : ComponentActivity() {
                         Order10(navController = navController, applicationContext, this@MainActivity, mainViewModel, auth, firestore)
                     }
                     composable("storage_test") {
-                        StorageTest11(navController = navController, applicationContext, this@MainActivity, mainViewModel, auth, firestore)
+                        StorageTest11(navController = navController, applicationContext, this@MainActivity, mainViewModel, auth, firestore, storage)
                     }
 
                 }
@@ -768,6 +787,12 @@ fun FunctionList05(navController: NavController, auth: FirebaseAuth, context: Co
                             Text(text = stringResource(R.string.function_schedule_shop), color = Green4DCEE3, fontSize = 30.sp)
                         }
                     }
+                    "Storage test" -> {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Image(painterResource(id = R.drawable.ic_baseline_schedule_24), contentDescription = "")
+                            Text(text = stringResource(R.string.function_storage_test), color = Green4DCEE3, fontSize = 30.sp)
+                        }
+                    }
                     "Logout" -> {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Image(painterResource(id = R.drawable.ic_baseline_arrow_outward_24), contentDescription = "")
@@ -1188,9 +1213,91 @@ fun Order10(navController: NavController, context: Context, activity: MainActivi
 }
 
 @Composable
-fun StorageTest11(navController: NavController, context: Context, activity: MainActivity, mainViewModel: MainViewModel, auth: FirebaseAuth, firestore: FirebaseFirestore) {
+fun StorageTest11(navController: NavController, context: Context, activity: MainActivity, mainViewModel: MainViewModel, auth: FirebaseAuth, firestore: FirebaseFirestore, storage: FirebaseStorage) {
 
+    val interactionSourceTest = remember { MutableInteractionSource() }
+    val pressState = interactionSourceTest.collectIsPressedAsState()
+    val borderColor = if (pressState.value) Blue31B6FB else Blue00E6FE //Import com.pcp.composecomponent.ui.theme.YellowFFEB3B
+
+    val pictureFileUrl by mainViewModel._pictureFieUri.observeAsState(null)
+
+    Column(modifier = Modifier
+        .fillMaxSize()
+        .background(color = Green4DCEE3),
+        verticalArrangement = Arrangement.SpaceEvenly,
+        horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            text = "Upload shop image from mobile",
+            modifier = Modifier.clickable(onClick = {
+                navController.navigate("initial_screen")
+            })
+        )
+        Button( //Button只是一個容器,裡面要放文字,就是要再加一個Text
+            modifier = Modifier.fillMaxWidth(),
+            //enabled = false,
+            enabled = true, //如果 enabled 設為false, border, interactionSource就不會有變化
+            interactionSource = interactionSourceTest,
+            elevation = ButtonDefaults.elevation(
+                defaultElevation = 6.dp,
+                pressedElevation = 8.dp,
+                disabledElevation = 2.dp
+            ),
+            shape = RoundedCornerShape(8.dp),
+            border = BorderStroke(5.dp, color = borderColor),
+            colors = ButtonDefaults.buttonColors(
+                backgroundColor = Color.White,
+                contentColor = Color.Red
+            ),
+            contentPadding = PaddingValues(4.dp, 3.dp, 2.dp, 1.dp),
+            onClick = {
+                var fileIntent = Intent(Intent.ACTION_GET_CONTENT).setType("*/*")
+                val mimeTypes = arrayOf("image/*", "video/*")   //我們只要Image, 但為測試多個可能,就把二個都加入,但實測上發現沒有效果
+                fileIntent.putExtra(Intent.EXTRA_MIME_TYPES, mimeTypes)
+                startActivityForResult(activity, fileIntent, SELECT_FILE_ID, null)
+            })
+        {
+            Text(text = "Upload image from mobile phone")
+        }
+        Button( //Button只是一個容器,裡面要放文字,就是要再加一個Text
+            modifier = Modifier.fillMaxWidth(),
+            //enabled = false,
+            enabled = true, //如果 enabled 設為false, border, interactionSource就不會有變化
+            interactionSource = interactionSourceTest,
+            elevation = ButtonDefaults.elevation(
+                defaultElevation = 6.dp,
+                pressedElevation = 8.dp,
+                disabledElevation = 2.dp
+            ),
+            shape = RoundedCornerShape(8.dp),
+            border = BorderStroke(5.dp, color = borderColor),
+            colors = ButtonDefaults.buttonColors(
+                backgroundColor = Color.White,
+                contentColor = Color.Red
+            ),
+            contentPadding = PaddingValues(4.dp, 3.dp, 2.dp, 1.dp),
+            onClick = {
+                navController.popBackStack()
+            })
+        {
+            Text(text = "Back to prior page")
+        }
+    }
+
+    pictureFileUrl?.let { uriInfo ->
+        var fileName = mainViewModel.getFileName(uriInfo, activity)
+        var storageRef = storage.reference.child("images/" + fileName)
+
+        var uploadTask = storageRef.putFile(uriInfo)
+        uploadTask.addOnSuccessListener { listener ->
+            Toast.makeText(activity, "Upload success", Toast.LENGTH_LONG).show()
+            mainViewModel.setReceivePictureUri(null)
+        }.addOnFailureListener { listener ->
+            Toast.makeText(activity, "Upload fail", Toast.LENGTH_LONG).show()
+            mainViewModel.setReceivePictureUri(null)
+        }
+    }
 }
+
 @Composable
 fun DropdownMenuShow(mainViewModel: MainViewModel) {
     var expanded by remember { mutableStateOf(false) }
